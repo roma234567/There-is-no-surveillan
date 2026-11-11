@@ -469,7 +469,7 @@ private:
             unsigned long inode   = 0;
             char perms[8]{};
             int path_off = 0;
-            if (std::sscanf(line, "%*x-%*x %7s %*x %lx:%lx %lu %n",
+            if (std::sscanf(line, "%*lx-%*lx %7s %*x %lx:%lx %lu %n",
                             perms, &dev_maj, &dev_min, &inode, &path_off) >= 4 && inode != 0) {
                 const char* path = line + path_off;
                 /* Register PLT hooks on app/framework ELFs calling into libc & libbinder */

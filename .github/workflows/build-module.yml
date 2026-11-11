@@ -49,18 +49,30 @@ jobs:
 
       - name: Cross-compile Native Daemon, CLI & Zygisk Module (arm64-v8a & x86_64)
         run: |
+          set -o pipefail
           NDK_PATH="${ANDROID_HOME}/ndk/27.2.12479018"
           CMAKE_BIN="${ANDROID_HOME}/cmake/3.22.1/bin/cmake"
+          NINJA_BIN="${ANDROID_HOME}/cmake/3.22.1/bin/ninja"
           STRIP_BIN="${NDK_PATH}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
 
           for ABI in arm64-v8a x86_64; do
-            "$CMAKE_BIN" -S native -B "build/android-${ABI}" \
+            if ! "$CMAKE_BIN" -S native -B "build/android-${ABI}" \
+              -G Ninja \
+              -DCMAKE_MAKE_PROGRAM="${NINJA_BIN}" \
               -DCMAKE_TOOLCHAIN_FILE="${NDK_PATH}/build/cmake/android.toolchain.cmake" \
               -DANDROID_ABI="${ABI}" \
               -DANDROID_STL=c++_static \
               -DANDROID_PLATFORM=android-31 \
-              -DCMAKE_BUILD_TYPE=Release
-            "$CMAKE_BIN" --build "build/android-${ABI}" --parallel
+              -DCMAKE_BUILD_TYPE=Release > /tmp/cmake_cfg.log 2>&1; then
+              cat /tmp/cmake_cfg.log
+              echo "::error title=CMakeConfigFailed::$(tail -n 15 /tmp/cmake_cfg.log | tr '\n' ' ')"
+              exit 1
+            fi
+            if ! "$CMAKE_BIN" --build "build/android-${ABI}" --parallel > /tmp/cmake_bld.log 2>&1; then
+              cat /tmp/cmake_bld.log
+              echo "::error title=NDKBuildFailed::$(grep -E 'error:|FAILED' /tmp/cmake_bld.log | head -n 10 | tr '\n' ' ')"
+              exit 1
+            fi
             "$STRIP_BIN" --strip-unneeded \
               "build/android-${ABI}/sentineld" \
               "build/android-${ABI}/sentinelctl" \
@@ -70,7 +82,13 @@ jobs:
       - name: Build Vector Xposed Companion APK (LibXposed API 102)
         working-directory: vector-xposed
         run: |
-          gradle assembleRelease --no-daemon
+          set -o pipefail
+          if ! gradle assembleRelease --no-daemon > /tmp/gradle_bld.log 2>&1; then
+            cat /tmp/gradle_bld.log
+            echo "::error title=GradleBuildFailed::$(tail -n 20 /tmp/gradle_bld.log | tr '\n' ' ')"
+            exit 1
+          fi
+          cat /tmp/gradle_bld.log | tail -n 20
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
           test -f "$APK_PATH"
           echo "=== Verifying META-INF/xposed metadata inside APK ==="

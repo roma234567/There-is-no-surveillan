@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,18 +20,21 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <linux/sock_diag.h>
-#include <linux/inet_diag.h>
 
+#ifndef NETLINK_SOCK_DIAG
+#define NETLINK_SOCK_DIAG 4
+#endif
+#ifndef SOCK_DIAG_BY_FAMILY
+#define SOCK_DIAG_BY_FAMILY 20
+#endif
+#ifndef SOCK_DESTROY
+#define SOCK_DESTROY 21
+#endif
 #ifndef TCP_ESTABLISHED
 #define TCP_ESTABLISHED 1
 #endif
 #ifndef TCP_SYN_SENT
 #define TCP_SYN_SENT 2
-#endif
-#ifndef SOCK_DESTROY
-#define SOCK_DESTROY 21
 #endif
 
 #include <algorithm>
@@ -483,13 +487,45 @@ private:
         return false;
     }
 
+    /* Self-contained Linux UAPI sock_diag structures (compatible across glibc & Android Bionic) */
+    struct KernelDiagSockId {
+        uint16_t idiag_sport;
+        uint16_t idiag_dport;
+        uint32_t idiag_src[4];
+        uint32_t idiag_dst[4];
+        uint32_t idiag_if;
+        uint32_t idiag_cookie[2];
+    };
+
+    struct KernelDiagReqV2 {
+        uint8_t          sdiag_family;
+        uint8_t          sdiag_protocol;
+        uint8_t          idiag_ext;
+        uint8_t          pad;
+        uint32_t         idiag_states;
+        KernelDiagSockId id;
+    };
+
+    struct KernelDiagMsg {
+        uint8_t          idiag_family;
+        uint8_t          idiag_state;
+        uint8_t          idiag_timer;
+        uint8_t          idiag_retrans;
+        KernelDiagSockId id;
+        uint32_t         idiag_expires;
+        uint32_t         idiag_rqueue;
+        uint32_t         idiag_wqueue;
+        uint32_t         idiag_uid;
+        uint32_t         idiag_inode;
+    };
+
     static uint32_t destroySocketsAf(uint8_t family, uint8_t proto, uint32_t target_uid) {
         int nl = ::socket(AF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_SOCK_DIAG);
         if (nl < 0) return 0;
 
         struct {
-            nlmsghdr         nlh;
-            inet_diag_req_v2 req;
+            nlmsghdr        nlh;
+            KernelDiagReqV2 req;
         } dump_pkt{};
 
         dump_pkt.nlh.nlmsg_len   = sizeof(dump_pkt);
@@ -505,19 +541,20 @@ private:
             return 0;
         }
 
-        std::vector<inet_diag_sockid> victims;
+        std::vector<KernelDiagSockId> victims;
         uint8_t buf[8192];
         bool done = false;
         while (!done) {
             ssize_t len = ::recv(nl, buf, sizeof(buf), 0);
             if (len <= 0) break;
+            unsigned int rem = static_cast<unsigned int>(len);
             for (nlmsghdr* nlh = reinterpret_cast<nlmsghdr*>(buf);
-                 NLMSG_OK(nlh, len);
-                 nlh = NLMSG_NEXT(nlh, len)) {
+                 NLMSG_OK(nlh, rem);
+                 nlh = NLMSG_NEXT(nlh, rem)) {
                 if (nlh->nlmsg_type == NLMSG_DONE) { done = true; break; }
                 if (nlh->nlmsg_type == NLMSG_ERROR) { done = true; break; }
                 if (nlh->nlmsg_type == SOCK_DIAG_BY_FAMILY) {
-                    auto* msg = reinterpret_cast<inet_diag_msg*>(NLMSG_DATA(nlh));
+                    auto* msg = reinterpret_cast<KernelDiagMsg*>(NLMSG_DATA(nlh));
                     if (msg->idiag_uid == target_uid) {
                         victims.push_back(msg->id);
                     }
@@ -526,11 +563,10 @@ private:
         }
 
         uint32_t destroyed = 0;
-#ifdef SOCK_DESTROY
         for (const auto& id : victims) {
             struct {
-                nlmsghdr         nlh;
-                inet_diag_req_v2 req;
+                nlmsghdr        nlh;
+                KernelDiagReqV2 req;
             } kill_pkt{};
             kill_pkt.nlh.nlmsg_len   = sizeof(kill_pkt);
             kill_pkt.nlh.nlmsg_type  = SOCK_DESTROY;
@@ -544,7 +580,6 @@ private:
                 ++destroyed;
             }
         }
-#endif
         ::close(nl);
         return destroyed;
     }
