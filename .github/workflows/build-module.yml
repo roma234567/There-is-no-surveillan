@@ -1,0 +1,129 @@
+name: Build Privacy Sentinel (Android 17 / BakaSU / Vector API 102)
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  host-daemon-tests:
+    name: Host C++20 Daemon & Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile sentineld & sentinelctl and run integration suite
+        run: |
+          make test
+
+  build-android17-module:
+    name: Build Android 17 NDK (arm64-v8a) + Vector API 102 + Module ZIP
+    needs: host-daemon-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Install Android SDK 35 & NDK r27c
+        run: |
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.2.12479018" \
+            "cmake;3.22.1"
+
+      - name: Cross-compile Native Daemon, CLI & Zygisk Module (arm64-v8a & x86_64)
+        run: |
+          set -o pipefail
+          NDK_PATH="${ANDROID_HOME}/ndk/27.2.12479018"
+          CMAKE_BIN="${ANDROID_HOME}/cmake/3.22.1/bin/cmake"
+          NINJA_BIN="${ANDROID_HOME}/cmake/3.22.1/bin/ninja"
+          STRIP_BIN="${NDK_PATH}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+
+          for ABI in arm64-v8a x86_64; do
+            if ! "$CMAKE_BIN" -S native -B "build/android-${ABI}" \
+              -G Ninja \
+              -DCMAKE_MAKE_PROGRAM="${NINJA_BIN}" \
+              -DCMAKE_TOOLCHAIN_FILE="${NDK_PATH}/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="${ABI}" \
+              -DANDROID_STL=c++_static \
+              -DANDROID_PLATFORM=android-31 \
+              -DCMAKE_BUILD_TYPE=Release > /tmp/cmake_cfg.log 2>&1; then
+              cat /tmp/cmake_cfg.log
+              echo "::error title=CMakeConfigFailed::$(tail -n 15 /tmp/cmake_cfg.log | tr '\n' ' ')"
+              exit 1
+            fi
+            if ! "$CMAKE_BIN" --build "build/android-${ABI}" --parallel > /tmp/cmake_bld.log 2>&1; then
+              cat /tmp/cmake_bld.log
+              echo "::error title=NDKBuildFailed::$(grep -E 'error:|FAILED' /tmp/cmake_bld.log | head -n 10 | tr '\n' ' ')"
+              exit 1
+            fi
+            "$STRIP_BIN" --strip-unneeded \
+              "build/android-${ABI}/sentineld" \
+              "build/android-${ABI}/sentinelctl" \
+              "build/android-${ABI}/libprivacy_sentinel_zygisk.so"
+          done
+
+      - name: Build Vector Xposed Companion APK (LibXposed API 102)
+        working-directory: vector-xposed
+        run: |
+          set -o pipefail
+          if ! gradle assembleRelease --no-daemon > /tmp/gradle_bld.log 2>&1; then
+            cat /tmp/gradle_bld.log
+            echo "::error title=GradleBuildFailed::$(tail -n 20 /tmp/gradle_bld.log | tr '\n' ' ')"
+            exit 1
+          fi
+          cat /tmp/gradle_bld.log | tail -n 20
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK_PATH"
+          echo "=== Verifying META-INF/xposed metadata inside APK ==="
+          unzip -l "$APK_PATH" | grep "META-INF/xposed/module.prop"
+          unzip -l "$APK_PATH" | grep "META-INF/xposed/java_init.list"
+          unzip -l "$APK_PATH" | grep "META-INF/xposed/scope.list"
+          cp "$APK_PATH" ../build/PrivacySentinelVector.apk
+
+      - name: Package Flashable BakaSU / KernelSU Module ZIP
+        run: |
+          chmod +x scripts/package_module.sh
+          ./scripts/package_module.sh PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip
+          unzip -l build/release/PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip
+
+      - name: Upload Direct-Flashable Module ZIP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17
+          path: build/module-stage/*
+          if-no-files-found: error
+
+      - name: Publish Direct Download Release v2.0.0
+        if: github.event_name == 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view v2.0.0 >/dev/null 2>&1; then
+            gh release upload v2.0.0 build/release/PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip --clobber
+          else
+            gh release create v2.0.0 build/release/PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip \
+              --target "${GITHUB_SHA}" \
+              --title "Privacy Sentinel v2.0.0 — Mobile Edition (POCO X6 5G / BakaSU / A17)" \
+              --notes "Pure Mobile-Native WebUI v2.0 (zero desktop clutter), in-place flash-over upgrade over v1.0, Android 17 / HyperOS 4 / Linux 5.10 / BakaSU + SuSFS + Zygisk Next + Vector API 102."
+          fi

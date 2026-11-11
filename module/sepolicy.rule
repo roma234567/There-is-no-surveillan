@@ -1,0 +1,26 @@
+# Privacy Sentinel — SELinux Policy Rules for Android 17 / HyperOS 4 (BakaSU / KernelSU)
+# Allow read-only mmap lookup of policy.mmap and non-blocking datagram telemetry
+
+allow zygote adb_data_file dir { search getattr }
+allow zygote adb_data_file file { read open getattr map }
+allow system_server adb_data_file dir { search getattr }
+allow system_server adb_data_file file { read open getattr map }
+allow system_server adb_data_file sock_file { write getattr }
+allow system_server su unix_stream_socket { connectto }
+allow system_server su unix_dgram_socket { sendto }
+
+allow untrusted_app adb_data_file dir { search }
+allow untrusted_app adb_data_file file { read getattr map }
+allow untrusted_app adb_data_file sock_file { write }
+allow untrusted_app su unix_dgram_socket { sendto }
+allow untrusted_app su unix_stream_socket { connectto }
+
+allow untrusted_app_32 adb_data_file dir { search }
+allow untrusted_app_32 adb_data_file file { read getattr map }
+allow untrusted_app_32 adb_data_file sock_file { write }
+allow untrusted_app_32 su unix_dgram_socket { sendto }
+
+allow platform_app adb_data_file dir { search }
+allow platform_app adb_data_file file { read getattr map }
+allow platform_app adb_data_file sock_file { write }
+allow platform_app su unix_dgram_socket { sendto }
