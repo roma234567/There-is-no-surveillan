@@ -1,0 +1,2 @@
+# Safe non-invasive runtime marker (never touches ro.build.* or Play Integrity props)
+persist.privacysentinel.version=1.0.0

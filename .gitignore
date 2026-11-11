@@ -1,0 +1,13 @@
+# Build outputs & temporary runtime directories
+build/
+dist/
+out/
+.gradle/
+vector-xposed/.gradle/
+vector-xposed/build/
+vector-xposed/app/build/
+*.apk
+*.so
+*.o
+*.zip
+/tmp/

@@ -1,0 +1,8 @@
+id=privacy_sentinel
+name=Privacy Sentinel (BakaSU / A17)
+version=v1.0.0-garnet
+versionCode=100
+author=Privacy Sentinel Team
+description=Real-time Network/IPC Firewall, Kernel Sandbox, Data Spoofing, Anti-Spy & Per-App SOCKS5 Relay for Android 17 / HyperOS 4 (BakaSU + SuSFS + Zygisk Next + Vector API 102)
+webuiIcon=webroot/favicon.svg
+actionIcon=webroot/favicon.svg
