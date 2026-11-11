@@ -1,3 +1,7 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "../include/zygisk.hpp"
 #include "../include/sentinel_protocol.h"
 

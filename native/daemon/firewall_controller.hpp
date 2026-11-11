@@ -1,22 +1,37 @@
 #pragma once
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "../include/sentinel_protocol.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <linux/inet_diag.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <linux/sock_diag.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <linux/sock_diag.h>
+#include <linux/inet_diag.h>
+
+#ifndef TCP_ESTABLISHED
+#define TCP_ESTABLISHED 1
+#endif
+#ifndef TCP_SYN_SENT
+#define TCP_SYN_SENT 2
+#endif
+#ifndef SOCK_DESTROY
+#define SOCK_DESTROY 21
+#endif
 
 #include <algorithm>
 #include <fstream>

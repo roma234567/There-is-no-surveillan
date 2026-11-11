@@ -1,3 +1,7 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "../include/sentinel_protocol.h"
 #include "firewall_controller.hpp"
 #include "proxy_relay.hpp"

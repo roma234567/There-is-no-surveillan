@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -57,6 +57,7 @@ jobs:
             "$CMAKE_BIN" -S native -B "build/android-${ABI}" \
               -DCMAKE_TOOLCHAIN_FILE="${NDK_PATH}/build/cmake/android.toolchain.cmake" \
               -DANDROID_ABI="${ABI}" \
+              -DANDROID_STL=c++_static \
               -DANDROID_PLATFORM=android-31 \
               -DCMAKE_BUILD_TYPE=Release
             "$CMAKE_BIN" --build "build/android-${ABI}" --parallel

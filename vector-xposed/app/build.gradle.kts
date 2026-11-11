@@ -32,7 +32,7 @@ val prepareLibxposedApi by tasks.registering {
     }
 }
 
-tasks.matching { it.name.startsWith("compile") && it.name.endsWith("JavaWithJavac") }.configureEach {
+tasks.named("preBuild") {
     dependsOn(prepareLibxposedApi)
 }
 
