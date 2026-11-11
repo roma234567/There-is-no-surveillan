@@ -170,6 +170,41 @@ window.SentinelSVG = {
       <circle cx="16.5" cy="16.5" r="3.5" stroke="currentColor" stroke-width="1.7"/>
     </svg>`,
 
+  /* Mobile UI Micro-Illustrations (Zero Font Icons) */
+  themeContrast: () => `
+    <svg class="ui-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="7.2" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M10 2.8A7.2 7.2 0 0 1 10 17.2V2.8Z" fill="currentColor"/>
+    </svg>`,
+
+  searchLens: () => `
+    <svg class="ui-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="9" cy="9" r="5.6" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M13.2 13.2L16.8 16.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>`,
+
+  tuneSliders: () => `
+    <svg class="ui-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M3.5 6H16.5M3.5 14H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="7.5" cy="6" r="2.2" fill="var(--surface-card)" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="12.5" cy="14" r="2.2" fill="var(--surface-card)" stroke="currentColor" stroke-width="1.6"/>
+    </svg>`,
+
+  trashBin: () => `
+    <svg class="ui-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4.5 6H15.5M8 6V4.4C8 4 8.4 3.6 8.8 3.6H11.2C11.6 3.6 12 4 12 4.4V6M6.2 6L6.8 15.4C6.8 16 7.3 16.5 8 16.5H12C12.7 16.5 13.2 16 13.2 15.4L13.8 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+
+  boltSever: () => `
+    <svg class="ui-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M11 2.8L5.2 10.6H10L9 17.2L14.8 9.4H10L11 2.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+    </svg>`,
+
+  moonState: () => `
+    <svg class="ui-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M12.6 3.4A6.4 6.4 0 1 0 16.6 13.2A5.1 5.1 0 0 1 12.6 3.4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    </svg>`,
+
   /* Deterministic Bespoke SVG Package Avatar Generator */
   appAvatar: (pkgName, label, isZeroTouch) => {
     let hash = 0;

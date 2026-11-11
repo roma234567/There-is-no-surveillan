@@ -1,9 +1,8 @@
 /* ============================================================================
- * Privacy Sentinel — Interactive WebUI Controller (Vanilla JS, Zero Bloat)
+ * Privacy Sentinel v2.0 — Pure Mobile Native Controller (Vanilla JS, 120Hz)
  * ============================================================================ */
 
 (() => {
-  /* Bitmask constants matching native/include/sentinel_protocol.h */
   const CAT = {
     NETWORK:   1 << 0,
     DATA:      1 << 1,
@@ -38,8 +37,12 @@
     lang: localStorage.getItem('sentinel_lang') || 'ru',
     design: localStorage.getItem('sentinel_design') || 'obsidian',
     activeTab: 'dashboard',
-    activeCategory: 0, // 0 = All
+    dashSub: 'apps',
+    fwSub: 'sleep',
+    spSub: 'antispy',
+    activeCategory: 0,
     searchQuery: '',
+    selectedGrace: 15,
     status: null,
     snapshot: null,
     sparkTotal: [8, 11, 10, 13, 14, 16, 15, 18, 19, 21, 22, 24],
@@ -47,7 +50,8 @@
     lastTotalEvents: 0,
     lastBlockedEvents: 0,
     openDrawerUid: null,
-    activePromptId: null
+    activePromptId: null,
+    dirtyFormLockUntil: 0
   };
 
   const t = (key) => (window.SentinelI18n[state.lang] && window.SentinelI18n[state.lang][key]) || key;
@@ -60,19 +64,29 @@
       .replace(/"/g, '&quot;');
   }
 
+  function isUserEditingForm() {
+    if (Date.now() < state.dirtyFormLockUntil) return true;
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName;
+    return (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') && el.id !== 'app-search-input';
+  }
+
   function showToast(msg) {
     const el = document.getElementById('toast-banner');
     if (!el) return;
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(showToast._tid);
-    showToast._tid = setTimeout(() => el.classList.remove('show'), 2200);
+    showToast._tid = setTimeout(() => el.classList.remove('show'), 2000);
   }
 
-  /* ---- Static SVG Slot Mounting ---- */
   function mountStaticIllustrations() {
     document.getElementById('brand-crest-slot').innerHTML = SentinelSVG.brandCrest();
+    document.getElementById('btn-quick-theme').innerHTML = SentinelSVG.themeContrast();
     document.getElementById('hero-radar-slot').innerHTML = SentinelSVG.tacticalRadar();
+    document.getElementById('sleep-ic-slot').innerHTML = SentinelSVG.moonState();
+    document.getElementById('search-ic-slot').innerHTML = SentinelSVG.searchLens();
     document.getElementById('sleep-art-slot').innerHTML = SentinelSVG.deepSleepWave();
     document.getElementById('antispy-art-slot').innerHTML = SentinelSVG.antiSpyShutter();
     document.getElementById('device-garnet-slot').innerHTML = SentinelSVG.deviceGarnet();
@@ -86,6 +100,9 @@
   function applyDesignAndLanguage() {
     document.documentElement.setAttribute('data-design', state.design);
     document.documentElement.setAttribute('lang', state.lang);
+
+    const quickLangBtn = document.getElementById('btn-quick-lang');
+    if (quickLangBtn) quickLangBtn.textContent = state.lang.toUpperCase();
 
     document.querySelectorAll('[data-theme-pick]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.themePick === state.design);
@@ -102,7 +119,7 @@
     });
 
     renderCategoryPills();
-    if (state.snapshot) renderAll();
+    if (state.snapshot) renderAll(true);
   }
 
   function renderCategoryPills() {
@@ -133,7 +150,6 @@
     });
   }
 
-  /* ---- Renderers ---- */
   function renderHeroAndSubsystems() {
     const snap = state.snapshot;
     if (!snap) return;
@@ -141,9 +157,8 @@
     document.getElementById('kpi-events').textContent = snap.total_events.toLocaleString();
     document.getElementById('kpi-blocked').textContent = snap.total_blocked.toLocaleString();
     document.getElementById('kpi-spoofed').textContent = snap.total_spoofed.toLocaleString();
-    document.getElementById('kpi-ring').textContent = `${snap.ring_used} / ${(snap.ring_capacity / 1000).toFixed(0)}k`;
+    document.getElementById('kpi-ring').textContent = `${snap.ring_used}/${(snap.ring_capacity / 1000).toFixed(0)}k`;
 
-    /* Update sparkline history on new telemetry */
     if (snap.total_events !== state.lastTotalEvents) {
       const dTot = Math.max(1, snap.total_events - state.lastTotalEvents);
       const dBlk = Math.max(0, snap.total_blocked - state.lastBlockedEvents);
@@ -157,38 +172,38 @@
     document.getElementById('sparkline-slot').innerHTML =
       SentinelSVG.sparkline(state.sparkTotal, state.sparkBlocked);
 
-    /* Topbar toggles sync */
     document.querySelectorAll('[data-profile]').forEach((b) => {
       b.classList.toggle('active', Number(b.dataset.profile) === snap.global_profile);
     });
+
     const sleepBtn = document.getElementById('btn-toggle-sleep');
     const sleepLbl = document.getElementById('sleep-btn-label');
-    sleepBtn.classList.toggle('btn-primary', !!snap.screen_sleeping);
+    sleepBtn.classList.toggle('m-btn-primary', !!snap.screen_sleeping);
     sleepLbl.textContent = snap.screen_sleeping ? t('btnSleepSimOn') : t('btnSleepSimOff');
     document.getElementById('chk-system-apps').checked = !!snap.show_system_apps;
 
     const proxyOn = state.status && state.status.proxy && state.status.proxy.enabled;
     const subSlot = document.getElementById('subsystem-tiles-slot');
     subSlot.innerHTML = `
-      <div class="sub-tile">
-        <div class="sub-top">${SentinelSVG.catNetwork()}<span class="status-dot">${escHtml(t('stateActive'))}</span></div>
-        <div class="sub-name">${escHtml(t('subNetfilter'))}</div>
-        <div class="sub-meta">SENTINEL_OUT + SOCK_DESTROY</div>
+      <div class="m-sub-tile">
+        <div class="m-sub-top">${SentinelSVG.catNetwork()}<span class="m-dot">${escHtml(t('stateActive'))}</span></div>
+        <strong style="font-size:12px">${escHtml(t('subNetfilter'))}</strong>
+        <span class="m-p m-mono" style="font-size:10.5px">SENTINEL_OUT • 5.10</span>
       </div>
-      <div class="sub-tile">
-        <div class="sub-top">${SentinelSVG.catSandbox()}<span class="status-dot">${escHtml(t('stateActive'))}</span></div>
-        <div class="sub-name">${escHtml(t('subZygisk'))}</div>
-        <div class="sub-meta">PLT Hooks • Mount NS • PIF Safe</div>
+      <div class="m-sub-tile">
+        <div class="m-sub-top">${SentinelSVG.catSandbox()}<span class="m-dot">${escHtml(t('stateActive'))}</span></div>
+        <strong style="font-size:12px">${escHtml(t('subZygisk'))}</strong>
+        <span class="m-p m-mono" style="font-size:10.5px">PLT • MountNS • PIF</span>
       </div>
-      <div class="sub-tile">
-        <div class="sub-top">${SentinelSVG.catIpc()}<span class="status-dot">${escHtml(t('stateActive'))}</span></div>
-        <div class="sub-name">${escHtml(t('subVector'))}</div>
-        <div class="sub-meta">AMS IPC + IFW + Zero-PCM Mic</div>
+      <div class="m-sub-tile">
+        <div class="m-sub-top">${SentinelSVG.catIpc()}<span class="m-dot">${escHtml(t('stateActive'))}</span></div>
+        <strong style="font-size:12px">${escHtml(t('subVector'))}</strong>
+        <span class="m-p m-mono" style="font-size:10.5px">AMS • IFW • ZeroPCM</span>
       </div>
-      <div class="sub-tile">
-        <div class="sub-top">${SentinelSVG.catProxy()}<span class="status-dot ${proxyOn ? '' : 'standby'}">${escHtml(proxyOn ? t('stateActive') : t('stateStandby'))}</span></div>
-        <div class="sub-name">${escHtml(t('subProxy'))}</div>
-        <div class="sub-meta">${proxyOn ? escHtml(`${state.status.proxy.socks5_host}:${state.status.proxy.socks5_port}`) : '127.0.0.1:9050 (:19040)'}</div>
+      <div class="m-sub-tile">
+        <div class="m-sub-top">${SentinelSVG.catProxy()}<span class="m-dot ${proxyOn ? '' : 'standby'}">${escHtml(proxyOn ? t('stateActive') : t('stateStandby'))}</span></div>
+        <strong style="font-size:12px">${escHtml(t('subProxy'))}</strong>
+        <span class="m-p m-mono" style="font-size:10.5px">${proxyOn ? escHtml(`${state.status.proxy.socks5_host}:${state.status.proxy.socks5_port}`) : '127.0.0.1:9050'}</span>
       </div>
     `;
   }
@@ -218,73 +233,79 @@
     if (!snap) return;
     const container = document.getElementById('apps-list-container');
     const apps = (snap.apps || []).filter(appMatchesFilter);
+    document.getElementById('cnt-apps-pill').textContent = String(apps.length);
 
     container.innerHTML = apps.map((app) => {
       const isZeroTouch = (app.flags & POL.EXEMPT_ZERO_TOUCH) !== 0;
       const c = app.counts || {};
       const isSandboxed = (app.flags & (POL.SANDBOX_FS_L1 | POL.SANDBOX_KERNEL_L2)) !== 0;
       const isProxied = (app.flags & POL.ROUTE_PROXY) !== 0;
+      const netBlocked = (app.flags & POL.BLOCK_NETWORK) !== 0;
+      const askOn = (app.flags & POL.ASK_INTERACTIVE) !== 0;
 
       const plaques = isZeroTouch
-        ? `<span class="threat-plaque sandbox hot">${SentinelSVG.zeroTouchSeal()}<span>${escHtml(t('zeroTouchBadge'))}</span></span>`
+        ? `<span class="t-chip sandbox hot">${SentinelSVG.zeroTouchSeal()}<span>${escHtml(t('zeroTouchBadge'))}</span></span>`
         : `
-          <span class="threat-plaque net ${c.network > 0 ? 'hot' : ''}">${SentinelSVG.catNetwork()}<span>${escHtml(t('badgeNet'))}</span><span class="p-count">${c.network || 0}</span></span>
-          <span class="threat-plaque data ${c.data > 0 ? 'hot' : ''}">${SentinelSVG.catData()}<span>${escHtml(t('badgeData'))}</span><span class="p-count">${c.data || 0}</span></span>
-          <span class="threat-plaque auto ${c.autostart > 0 ? 'hot' : ''}">${SentinelSVG.catAutostart()}<span>${escHtml(t('badgeAuto'))}</span><span class="p-count">${c.autostart || 0}</span></span>
-          <span class="threat-plaque ipc ${c.ipc > 0 ? 'hot' : ''}">${SentinelSVG.catIpc()}<span>${escHtml(t('badgeIpc'))}</span><span class="p-count">${c.ipc || 0}</span></span>
-          <span class="threat-plaque danger ${c.danger > 0 ? 'hot' : ''}">${SentinelSVG.catDanger()}<span>${escHtml(t('badgeDanger'))}</span><span class="p-count">${c.danger || 0}</span></span>
-          ${isSandboxed ? `<span class="threat-plaque sandbox hot">${SentinelSVG.catSandbox()}<span>${escHtml(t('badgeSandbox'))}</span></span>` : ''}
-          ${isProxied ? `<span class="threat-plaque proxy hot">${SentinelSVG.catProxy()}<span>${escHtml(t('badgeProxy'))}</span></span>` : ''}
+          <span class="t-chip net ${c.network > 0 ? 'hot' : ''}">${SentinelSVG.catNetwork()}<span>${escHtml(t('badgeNet'))}</span><b>${c.network || 0}</b></span>
+          <span class="t-chip data ${c.data > 0 ? 'hot' : ''}">${SentinelSVG.catData()}<span>${escHtml(t('badgeData'))}</span><b>${c.data || 0}</b></span>
+          <span class="t-chip auto ${c.autostart > 0 ? 'hot' : ''}">${SentinelSVG.catAutostart()}<span>${escHtml(t('badgeAuto'))}</span><b>${c.autostart || 0}</b></span>
+          <span class="t-chip ipc ${c.ipc > 0 ? 'hot' : ''}">${SentinelSVG.catIpc()}<span>${escHtml(t('badgeIpc'))}</span><b>${c.ipc || 0}</b></span>
+          <span class="t-chip danger ${c.danger > 0 ? 'hot' : ''}">${SentinelSVG.catDanger()}<span>${escHtml(t('badgeDanger'))}</span><b>${c.danger || 0}</b></span>
+          ${isSandboxed ? `<span class="t-chip sandbox hot">${SentinelSVG.catSandbox()}<span>${escHtml(t('badgeSandbox'))}</span></span>` : ''}
+          ${isProxied ? `<span class="t-chip proxy hot">${SentinelSVG.catProxy()}<span>${escHtml(t('badgeProxy'))}</span></span>` : ''}
         `;
 
       return `
-        <article class="app-card" data-uid="${app.uid}">
-          <div class="app-head">
-            <div class="app-id-group">
+        <article class="m-app-card" data-uid="${app.uid}">
+          <div class="m-app-top">
+            <div class="m-app-ident" ${!isZeroTouch ? `data-open-dossier="${app.uid}"` : ''}>
               ${SentinelSVG.appAvatar(app.package_name, app.label, isZeroTouch)}
-              <div>
-                <div class="app-title-row">
-                  <span class="app-name">${escHtml(app.label)}</span>
-                  <span class="uid-chip">UID ${app.uid}</span>
-                  <span class="proc-chip ${app.proc_state === 'FG' ? 'fg' : ''}">${escHtml(app.proc_state)}</span>
+              <div class="m-app-meta">
+                <div class="m-app-name-row">
+                  <span class="m-app-name">${escHtml(app.label)}</span>
+                  <span class="m-badge-mini ${app.proc_state === 'FG' ? 'fg' : ''}">${escHtml(app.proc_state)}</span>
+                  <span class="m-badge-mini">${app.uid}</span>
                 </div>
-                <div class="app-pkg">${escHtml(app.package_name)}</div>
+                <div class="m-app-pkg">${escHtml(app.package_name)}</div>
               </div>
             </div>
-            ${!isZeroTouch ? `<button class="btn" data-open-dossier="${app.uid}">${escHtml(t('btnConfigureApp'))}</button>` : ''}
+            ${!isZeroTouch ? `
+              <button class="m-icon-btn" data-open-dossier="${app.uid}" aria-label="${escHtml(t('btnConfigureApp'))}">
+                ${SentinelSVG.tuneSliders()}
+              </button>
+            ` : ''}
           </div>
 
-          <div class="plaque-row">${plaques}</div>
+          <div class="m-plaques">${plaques}</div>
 
           ${!isZeroTouch ? `
-          <div class="app-actions">
-            <div class="quick-toggles">
-              <label class="switch-label">
-                <input type="checkbox" class="switch-input" data-quick-flag="${POL.BLOCK_NETWORK}" data-uid="${app.uid}" ${(app.flags & POL.BLOCK_NETWORK) ? 'checked' : ''} />
-                <span>${escHtml(t('quickNetBlock'))}</span>
-              </label>
-              <label class="switch-label">
-                <input type="checkbox" class="switch-input" data-quick-flag="${POL.ASK_INTERACTIVE}" data-uid="${app.uid}" ${(app.flags & POL.ASK_INTERACTIVE) ? 'checked' : ''} />
-                <span>${escHtml(t('quickAskMode'))}</span>
-              </label>
-            </div>
-            <button class="btn btn-danger" data-kill-sock="${app.uid}">${escHtml(t('btnSeverSockets'))}</button>
+          <div class="m-app-bar">
+            <button class="m-pill-toggle ${netBlocked ? 'on-block' : ''}" data-pill-flag="${POL.BLOCK_NETWORK}" data-uid="${app.uid}">
+              ${escHtml(t('quickNetBlock'))}
+            </button>
+            <button class="m-pill-toggle ${askOn ? 'on-ask' : ''}" data-pill-flag="${POL.ASK_INTERACTIVE}" data-uid="${app.uid}">
+              ${escHtml(t('quickAskMode'))}
+            </button>
+            <button class="m-btn m-btn-sm m-btn-danger" data-kill-sock="${app.uid}">
+              ${SentinelSVG.boltSever()}
+              <span>${escHtml(t('btnSeverSockets'))}</span>
+            </button>
           </div>` : ''}
         </article>
       `;
     }).join('');
 
-    container.querySelectorAll('[data-open-dossier]').forEach((btn) => {
-      btn.addEventListener('click', () => openAppDossier(Number(btn.dataset.openDossier)));
+    container.querySelectorAll('[data-open-dossier]').forEach((el) => {
+      el.addEventListener('click', () => openAppDossier(Number(el.dataset.openDossier)));
     });
 
-    container.querySelectorAll('[data-quick-flag]').forEach((chk) => {
-      chk.addEventListener('change', async () => {
-        const uid = Number(chk.dataset.uid);
-        const bit = Number(chk.dataset.quickFlag);
+    container.querySelectorAll('[data-pill-flag]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const uid = Number(btn.dataset.uid);
+        const bit = Number(btn.dataset.pillFlag);
         const app = state.snapshot.apps.find((a) => a.uid === uid);
         if (!app) return;
-        const nextFlags = chk.checked ? (app.flags | bit) : (app.flags & ~bit);
+        const nextFlags = (app.flags & bit) ? (app.flags & ~bit) : (app.flags | bit);
         await SentinelBridge.rpc('update_app', { uid, flags: nextFlags });
         showToast(t('toastSaved'));
         await refreshSnapshot();
@@ -295,7 +316,7 @@
       btn.addEventListener('click', async () => {
         const uid = Number(btn.dataset.killSock);
         const r = await SentinelBridge.rpc('kill_sockets', { uid });
-        showToast(`NETLINK_SOCK_DIAG: closed ${r.sockets_killed ?? 0} socket(s)`);
+        showToast(`SOCK_DESTROY: ${r.sockets_killed ?? 0}`);
         await refreshSnapshot();
       });
     });
@@ -337,19 +358,21 @@
       return true;
     });
 
-    feed.innerHTML = events.slice(0, 45).map((ev) => {
+    document.getElementById('cnt-stream-pill').textContent = String(events.length);
+
+    feed.innerHTML = events.slice(0, 50).map((ev) => {
       const act = actionMeta(ev.action);
       const dt = new Date(ev.ts).toLocaleTimeString();
       return `
-        <div class="event-item" data-ev-uid="${ev.uid}">
-          <div class="ev-top">
-            <span class="ev-type">${categoryIcon(ev.category)}<span>${escHtml(ev.type)}</span></span>
-            <span class="ev-act ${act.cls}">${escHtml(act.label)}</span>
+        <div class="m-ev-card" data-ev-uid="${ev.uid}">
+          <div class="m-ev-top">
+            <span class="m-ev-type">${categoryIcon(ev.category)}<span>${escHtml(ev.type)}</span></span>
+            <span class="m-ev-act ${act.cls}">${escHtml(act.label)}</span>
           </div>
-          <div class="ev-target">${escHtml(ev.target)}</div>
-          <div class="ev-meta">
-            <span>${escHtml(ev.pkg)} (UID ${ev.uid}${ev.is_bg ? ' • BG' : ''})</span>
-            <span class="mono">#${ev.seq} • ${dt}</span>
+          <div class="m-ev-target">${escHtml(ev.target)}</div>
+          <div class="m-ev-foot">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(ev.pkg)} (${ev.uid}${ev.is_bg ? '•BG' : ''})</span>
+            <span class="m-mono">#${ev.seq} • ${dt}</span>
           </div>
         </div>
       `;
@@ -364,23 +387,34 @@
     });
   }
 
-  function renderFirewallAndIpcTab() {
+  function renderFirewallAndIpcTab(forceFormSync = false) {
     const snap = state.snapshot;
     if (!snap) return;
 
-    document.getElementById('sel-sleep-mode').value = String(snap.sleep_mode);
-    document.getElementById('sel-sleep-grace').value = String(snap.sleep_grace_sec || 15);
+    if (forceFormSync || !isUserEditingForm()) {
+      document.getElementById('sel-sleep-mode').value = String(snap.sleep_mode);
+      state.selectedGrace = Number(snap.sleep_grace_sec ?? 15);
+      document.querySelectorAll('[data-grace]').forEach((b) => {
+        b.classList.toggle('active', Number(b.dataset.grace) === state.selectedGrace);
+      });
+    }
 
-    const sleepGrid = document.getElementById('sleep-apps-checklist');
+    const sleepList = document.getElementById('sleep-apps-checklist');
     const userApps = (snap.apps || []).filter((a) => !a.is_system && !(a.flags & POL.EXEMPT_ZERO_TOUCH));
-    sleepGrid.innerHTML = userApps.map((a) => `
-      <label class="check-tile">
-        <span><strong>${escHtml(a.label)}</strong> <small class="mono">(${a.uid})</small></span>
-        <input type="checkbox" class="switch-input" data-sleep-uid="${a.uid}" ${(a.flags & POL.SLEEP_SELECTED) ? 'checked' : ''} />
+    sleepList.innerHTML = userApps.map((a) => `
+      <label class="m-check-item">
+        <div class="m-check-left">
+          ${SentinelSVG.appAvatar(a.package_name, a.label, false)}
+          <div class="m-app-meta">
+            <div class="m-app-name">${escHtml(a.label)}</div>
+            <div class="m-app-pkg">UID ${a.uid} • ${escHtml(a.package_name)}</div>
+          </div>
+        </div>
+        <input type="checkbox" class="m-switch" data-sleep-uid="${a.uid}" ${(a.flags & POL.SLEEP_SELECTED) ? 'checked' : ''} />
       </label>
     `).join('');
 
-    sleepGrid.querySelectorAll('[data-sleep-uid]').forEach((chk) => {
+    sleepList.querySelectorAll('[data-sleep-uid]').forEach((chk) => {
       chk.addEventListener('change', async () => {
         const uid = Number(chk.dataset.sleepUid);
         const app = snap.apps.find((x) => x.uid === uid);
@@ -392,84 +426,115 @@
       });
     });
 
-    const tbody = document.getElementById('ipc-rules-tbody');
-    tbody.innerHTML = (snap.ipc_rules || []).map((r) => `
-      <tr>
-        <td class="mono">${escHtml(r.caller_pkg)}</td>
-        <td class="mono">${escHtml(r.target_pkg)}</td>
-        <td class="mono">${escHtml(r.component_type)} • ${escHtml(r.action_glob)}</td>
-        <td><button class="btn btn-danger" data-del-ipc="${escHtml(r.id)}">&times;</button></td>
-      </tr>
-    `).join('');
+    const rulesList = document.getElementById('ipc-rules-list');
+    const rules = snap.ipc_rules || [];
+    if (rules.length === 0) {
+      rulesList.innerHTML = `<div class="m-card m-p" style="text-align:center">${escHtml(t('ipcEmptyHint'))}</div>`;
+    } else {
+      rulesList.innerHTML = rules.map((r) => `
+        <div class="m-rule-card">
+          <div class="m-rule-body">
+            <div class="m-rule-flow">${escHtml(r.caller_pkg)} &rarr; ${escHtml(r.target_pkg)}</div>
+            <div class="m-rule-sub">${escHtml(r.component_type.toUpperCase())} • ${escHtml(r.action_glob)}</div>
+          </div>
+          <button class="m-icon-btn m-btn-danger" data-del-ipc="${escHtml(r.id)}" aria-label="Delete">
+            ${SentinelSVG.trashBin()}
+          </button>
+        </div>
+      `).join('');
 
-    tbody.querySelectorAll('[data-del-ipc]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        await SentinelBridge.rpc('delete_ipc_rule', { id: btn.dataset.delIpc });
-        await refreshSnapshot();
+      rulesList.querySelectorAll('[data-del-ipc]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await SentinelBridge.rpc('delete_ipc_rule', { id: btn.dataset.delIpc });
+          await refreshSnapshot();
+        });
       });
-    });
+    }
   }
 
-  function renderSpoofAndProxyTab() {
+  function renderSpoofAndProxyTab(forceFormSync = false) {
     const snap = state.snapshot;
     if (!snap) return;
 
     if (state.status) {
       document.getElementById('seed-badge').textContent =
-        `Master Seed: 0x${Number(state.status.master_seed || 0).toString(16).toUpperCase()}`;
-      const p = state.status.proxy || {};
-      document.getElementById('chk-proxy-enable').checked = !!p.enabled;
-      document.getElementById('inp-proxy-host').value = p.socks5_host || '127.0.0.1';
-      document.getElementById('inp-proxy-port').value = p.socks5_port || 9050;
-      document.getElementById('chk-proxy-quic').checked = p.block_quic !== false;
-      document.getElementById('chk-proxy-ipv6').checked = p.block_ipv6 !== false;
+        `Seed: 0x${Number(state.status.master_seed || 0).toString(16).toUpperCase()}`;
+
+      if (forceFormSync || !isUserEditingForm()) {
+        const p = state.status.proxy || {};
+        document.getElementById('chk-proxy-enable').checked = !!p.enabled;
+        document.getElementById('inp-proxy-host').value = p.socks5_host || '127.0.0.1';
+        document.getElementById('inp-proxy-port').value = p.socks5_port || 9050;
+        document.getElementById('chk-proxy-quic').checked = p.block_quic !== false;
+        document.getElementById('chk-proxy-ipv6').checked = p.block_ipv6 !== false;
+      }
     }
 
     const userApps = (snap.apps || []).filter((a) => !a.is_system && !(a.flags & POL.EXEMPT_ZERO_TOUCH));
-    const spoofList = document.getElementById('spoof-apps-list');
 
-    spoofList.innerHTML = userApps.map((a) => {
-      let curMode = 'off';
-      if (a.flags & POL.SPOOF_CUSTOM) curMode = 'custom';
-      else if (a.flags & POL.SPOOF_EPHEMERAL) curMode = 'ephemeral';
-      else if (a.flags & POL.SPOOF_DETERMINISTIC) curMode = 'deterministic';
+    if (forceFormSync || !isUserEditingForm()) {
+      const spoofList = document.getElementById('spoof-apps-list');
+      spoofList.innerHTML = userApps.map((a) => {
+        let curMode = 'off';
+        if (a.flags & POL.SPOOF_CUSTOM) curMode = 'custom';
+        else if (a.flags & POL.SPOOF_EPHEMERAL) curMode = 'ephemeral';
+        else if (a.flags & POL.SPOOF_DETERMINISTIC) curMode = 'deterministic';
 
-      return `
-        <div class="check-tile" style="flex-wrap:wrap;gap:10px;">
-          <div>
-            <strong>${escHtml(a.label)}</strong>
-            <div class="app-pkg">${escHtml(a.package_name)}</div>
+        return `
+          <div class="m-card" style="padding:11px 12px">
+            <div class="m-app-top" style="margin-bottom:8px">
+              <div class="m-check-left" data-open-spoof-dossier="${a.uid}" style="cursor:pointer">
+                ${SentinelSVG.appAvatar(a.package_name, a.label, false)}
+                <div class="m-app-meta">
+                  <div class="m-app-name">${escHtml(a.label)}</div>
+                  <div class="m-app-pkg">${escHtml(a.package_name)}</div>
+                </div>
+              </div>
+              <button class="m-icon-btn" data-open-spoof-dossier="${a.uid}">${SentinelSVG.tuneSliders()}</button>
+            </div>
+            <select class="m-input" data-spoof-sel="${a.uid}">
+              <option value="off" ${curMode === 'off' ? 'selected' : ''}>${escHtml(t('spoofModeOff'))}</option>
+              <option value="deterministic" ${curMode === 'deterministic' ? 'selected' : ''}>${escHtml(t('spoofModeDet'))}</option>
+              <option value="ephemeral" ${curMode === 'ephemeral' ? 'selected' : ''}>${escHtml(t('spoofModeEph'))}</option>
+              <option value="custom" ${curMode === 'custom' ? 'selected' : ''}>${escHtml(t('spoofModeCustom'))}</option>
+            </select>
           </div>
-          <select class="input" data-spoof-sel="${a.uid}">
-            <option value="off" ${curMode === 'off' ? 'selected' : ''}>${escHtml(t('spoofModeOff'))}</option>
-            <option value="deterministic" ${curMode === 'deterministic' ? 'selected' : ''}>${escHtml(t('spoofModeDet'))}</option>
-            <option value="ephemeral" ${curMode === 'ephemeral' ? 'selected' : ''}>${escHtml(t('spoofModeEph'))}</option>
-            <option value="custom" ${curMode === 'custom' ? 'selected' : ''}>${escHtml(t('spoofModeCustom'))}</option>
-          </select>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
 
-    spoofList.querySelectorAll('[data-spoof-sel]').forEach((sel) => {
-      sel.addEventListener('change', async () => {
-        const uid = Number(sel.dataset.spoofSel);
-        const app = snap.apps.find((x) => x.uid === uid);
-        if (!app) return;
-        let fl = app.flags & ~(POL.SPOOF_DETERMINISTIC | POL.SPOOF_EPHEMERAL | POL.SPOOF_CUSTOM);
-        if (sel.value === 'deterministic') fl |= POL.SPOOF_DETERMINISTIC;
-        else if (sel.value === 'ephemeral') fl |= POL.SPOOF_EPHEMERAL;
-        else if (sel.value === 'custom') fl |= POL.SPOOF_CUSTOM;
-        await SentinelBridge.rpc('update_app', { uid, flags: fl });
-        showToast(t('toastSaved'));
-        await refreshSnapshot();
+      spoofList.querySelectorAll('[data-open-spoof-dossier]').forEach((el) => {
+        el.addEventListener('click', () => openAppDossier(Number(el.dataset.openSpoofDossier)));
       });
-    });
+
+      spoofList.querySelectorAll('[data-spoof-sel]').forEach((sel) => {
+        sel.addEventListener('focus', () => { state.dirtyFormLockUntil = Date.now() + 4000; });
+        sel.addEventListener('change', async () => {
+          state.dirtyFormLockUntil = 0;
+          const uid = Number(sel.dataset.spoofSel);
+          const app = snap.apps.find((x) => x.uid === uid);
+          if (!app) return;
+          let fl = app.flags & ~(POL.SPOOF_DETERMINISTIC | POL.SPOOF_EPHEMERAL | POL.SPOOF_CUSTOM);
+          if (sel.value === 'deterministic') fl |= POL.SPOOF_DETERMINISTIC;
+          else if (sel.value === 'ephemeral') fl |= POL.SPOOF_EPHEMERAL;
+          else if (sel.value === 'custom') fl |= POL.SPOOF_CUSTOM;
+          await SentinelBridge.rpc('update_app', { uid, flags: fl });
+          showToast(t('toastSaved'));
+          await refreshSnapshot();
+        });
+      });
+    }
 
     const proxyGrid = document.getElementById('proxy-apps-checklist');
     proxyGrid.innerHTML = userApps.map((a) => `
-      <label class="check-tile">
-        <span><strong>${escHtml(a.label)}</strong> <small class="mono">SOCKS5</small></span>
-        <input type="checkbox" class="switch-input" data-proxy-uid="${a.uid}" ${(a.flags & POL.ROUTE_PROXY) ? 'checked' : ''} />
+      <label class="m-check-item">
+        <div class="m-check-left">
+          ${SentinelSVG.appAvatar(a.package_name, a.label, false)}
+          <div class="m-app-meta">
+            <div class="m-app-name">${escHtml(a.label)}</div>
+            <div class="m-app-pkg">SOCKS5 • UID ${a.uid}</div>
+          </div>
+        </div>
+        <input type="checkbox" class="m-switch" data-proxy-uid="${a.uid}" ${(a.flags & POL.ROUTE_PROXY) ? 'checked' : ''} />
       </label>
     `).join('');
 
@@ -488,46 +553,52 @@
 
   function renderSystemTab() {
     const modules = [
-      { name: 'BakaSU + Built-in SuSFS', note: 'Kernel root + automatic ksu_susfs path cloaking for /data/adb/privacy_sentinel' },
-      { name: 'Zygisk Next (Standalone)', note: 'API v5 PLT hooks + root companion SCM_RIGHTS policy.mmap descriptor' },
-      { name: 'Vector Framework (LibXposed API 102)', note: 'Protective exception mode + API 102 hot-reload + system_server IPC' },
-      { name: 'Play Integrity Fix (v4.9) & Tricky Store', note: 'Zero-Touch DLCLOSE_MODULE_LIBRARY on GMS, Vending & target.txt' },
-      { name: 'OverlayFS Metamodule', note: 'skip_mount enabled — zero /system partition modifications' },
-      { name: 'ViPER4Android', note: 'AudioTrack & AudioEffect untouched; only background AudioRecord PCM zeroed' },
-      { name: 'Yet Another Bootloop Protector (YABP)', note: '3-strike post-fs-data watchdog with automatic Safe Bypass fallback' }
+      { name: 'BakaSU + SuSFS', note: 'Kernel root + automatic ksu_susfs path cloaking' },
+      { name: 'Zygisk Next (API v5)', note: 'Native PLT hooks + SCM_RIGHTS policy.mmap' },
+      { name: 'Vector (LibXposed API 102)', note: 'Protective hooks + hot-reload + system_server IPC' },
+      { name: 'PIF v4.9 & Tricky Store', note: 'Zero-Touch DLCLOSE on GMS, Vending & target.txt' },
+      { name: 'OverlayFS Metamodule', note: 'skip_mount active — zero /system edits' },
+      { name: 'ViPER4Android', note: 'AudioTrack/Effect untouched; only BG AudioRecord muted' },
+      { name: 'YABP Watchdog', note: '3-strike post-fs-data bootloop failsafe' }
     ];
 
     document.getElementById('compat-matrix-slot').innerHTML = modules.map((m) => `
-      <div class="check-tile" style="align-items:flex-start;flex-direction:column;gap:4px;">
-        <div style="display:flex;width:100%;justify-content:space-between;align-items:center;">
-          <strong>${escHtml(m.name)}</strong>
-          <span class="status-dot">${escHtml(t('compatOk'))}</span>
+      <div class="m-rule-card">
+        <div class="m-rule-body">
+          <div style="font-size:13px;font-weight:700">${escHtml(m.name)}</div>
+          <div class="m-p" style="font-size:11.5px;margin-top:2px">${escHtml(m.note)}</div>
         </div>
-        <span class="section-sub" style="margin:0">${escHtml(m.note)}</span>
+        <span class="m-dot">${escHtml(t('compatOk'))}</span>
       </div>
     `).join('');
 
     const transportMode = SentinelBridge.mode === 'ksu_native'
-      ? 'Transport A: window.ksu.exec -> sentinelctl -> UNIX Socket (Zero TCP Port)'
-      : 'Transport B: 127.0.0.1 HTTP/SSE + 256-bit X-Sentinel-Token';
+      ? 'ksu.exec -> sentinelctl (UNIX Socket, Zero Port)'
+      : '127.0.0.1 HTTP/SSE + 256-bit X-Sentinel-Token';
 
     document.getElementById('security-details-slot').innerHTML = `
-      <div class="check-tile" style="flex-direction:column;align-items:flex-start;gap:4px;">
-        <strong>WebUI Active Transport</strong>
-        <span class="mono section-sub" style="margin:0">${escHtml(transportMode)}</span>
+      <div class="m-rule-card">
+        <div class="m-rule-body">
+          <div style="font-size:12.5px;font-weight:700">WebUI Transport</div>
+          <div class="m-p m-mono" style="font-size:11px;margin-top:2px">${escHtml(transportMode)}</div>
+        </div>
       </div>
-      <div class="check-tile" style="flex-direction:column;align-items:flex-start;gap:4px;">
-        <strong>Android 17 MemoryLimiter &amp; Freezer Bypass</strong>
-        <span class="section-sub" style="margin:0">sentineld runs as UID 0 in /sys/fs/cgroup/privacy_sentinel (oom_score_adj = -900), completely exempt from UID &ge; 10000 cgroup v2 MemoryLimiter.</span>
+      <div class="m-rule-card">
+        <div class="m-rule-body">
+          <div style="font-size:12.5px;font-weight:700">Android 17 MemoryLimiter Exemption</div>
+          <div class="m-p" style="font-size:11.5px;margin-top:2px">sentineld UID 0 (oom_score_adj -900) outside UID &ge; 10000 cgroup limits</div>
+        </div>
       </div>
-      <div class="check-tile" style="flex-direction:column;align-items:flex-start;gap:4px;">
-        <strong>POCO X6 5G (garnet) • HyperOS 4 • Linux 5.10 Engine</strong>
-        <span class="mono section-sub" style="margin:0">${escHtml((state.status && state.status.fw_backend) || 'iptables-xtables (SENTINEL_* chains)')}</span>
+      <div class="m-rule-card">
+        <div class="m-rule-body">
+          <div style="font-size:12.5px;font-weight:700">Firewall Engine (garnet • 5.10)</div>
+          <div class="m-p m-mono" style="font-size:11px;margin-top:2px">${escHtml((state.status && state.status.fw_backend) || 'iptables-xtables (SENTINEL_*)')}</div>
+        </div>
       </div>
     `;
   }
 
-  /* ---- Per-App Dossier Drawer ---- */
+  /* ---- Native Bottom Sheet: Per-App Policy Dossier ---- */
   function openAppDossier(uid) {
     const app = state.snapshot && state.snapshot.apps.find((a) => a.uid === uid);
     if (!app) return;
@@ -535,25 +606,26 @@
 
     const sheet = document.getElementById('app-drawer-sheet');
     const flagRow = (bit, labelKey) => `
-      <label class="option-row">
+      <label class="m-switch-row">
         <span>${escHtml(t(labelKey))}</span>
-        <input type="checkbox" class="switch-input" data-drawer-bit="${bit}" ${(app.flags & bit) ? 'checked' : ''} />
+        <input type="checkbox" class="m-switch" data-drawer-bit="${bit}" ${(app.flags & bit) ? 'checked' : ''} />
       </label>
     `;
 
     sheet.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
-        <div class="app-id-group">
+      <div class="m-sheet-handle"></div>
+      <div class="m-app-top" style="margin-bottom:10px">
+        <div class="m-check-left">
           ${SentinelSVG.appAvatar(app.package_name, app.label, false)}
-          <div>
-            <div class="app-name">${escHtml(app.label)} <span class="uid-chip">UID ${app.uid}</span></div>
-            <div class="app-pkg">${escHtml(app.package_name)}</div>
+          <div class="m-app-meta">
+            <div class="m-app-name">${escHtml(app.label)} <span class="m-badge-mini">UID ${app.uid}</span></div>
+            <div class="m-app-pkg">${escHtml(app.package_name)}</div>
           </div>
         </div>
-        <button class="btn" id="btn-close-drawer">${escHtml(t('btnClose'))}</button>
+        <button class="m-btn m-btn-sm" id="btn-close-drawer">${escHtml(t('btnClose'))}</button>
       </div>
 
-      <h4 class="section-title" style="margin-top:10px">${escHtml(t('secNetSandbox'))}</h4>
+      <div class="m-lbl" style="margin-top:8px;color:var(--accent-primary)">${escHtml(t('secNetSandbox'))}</div>
       ${flagRow(POL.BLOCK_NETWORK, 'optBlockNet')}
       ${flagRow(POL.SLEEP_SELECTED, 'optSleepMember')}
       ${flagRow(POL.SANDBOX_FS_L1, 'optSandboxL1')}
@@ -561,43 +633,50 @@
       ${flagRow(POL.ASK_INTERACTIVE, 'optAskPrompt')}
       ${flagRow(POL.STRICT_KILLSWITCH, 'optKillSwitch')}
 
-      <h4 class="section-title" style="margin-top:14px">${escHtml(t('secIpcRules'))}</h4>
+      <div class="m-lbl" style="margin-top:12px;color:var(--accent-primary)">${escHtml(t('secIpcRules'))}</div>
       ${flagRow(POL.BLOCK_BG_IPC, 'optBlockBgIpc')}
       ${flagRow(POL.BLOCK_AUTOSTART, 'optBlockAutostart')}
       ${flagRow(POL.IPC_REJECT_EXPLICIT, 'optExplicitReject')}
 
-      <h4 class="section-title" style="margin-top:14px">${escHtml(t('secSpoofSpy'))}</h4>
+      <div class="m-lbl" style="margin-top:12px;color:var(--accent-primary)">${escHtml(t('secSpoofSpy'))}</div>
       ${flagRow(POL.ANTISPY_BG_MIC_CAM, 'optBgMicCam')}
       ${flagRow(POL.ANTISPY_BG_CLIP, 'optBgClip')}
       ${flagRow(POL.TRAP_ROOT_SCAN, 'optTrapRoot')}
       ${flagRow(POL.ROUTE_PROXY, 'optRouteProxy')}
 
-      <div class="form-grid" style="margin-top:12px">
-        <div>
-          <label class="field-lbl">Custom IMEI</label>
-          <input id="drw-imei" class="input mono" style="width:100%" value="${escHtml(app.custom_imei)}" />
+      <div class="m-stack-fields" style="margin-top:12px">
+        <div class="m-row-2">
+          <div>
+            <label class="m-lbl">IMEI</label>
+            <input id="drw-imei" class="m-input m-mono" value="${escHtml(app.custom_imei)}" />
+          </div>
+          <div>
+            <label class="m-lbl">MAC</label>
+            <input id="drw-mac" class="m-input m-mono" value="${escHtml(app.custom_mac)}" />
+          </div>
         </div>
-        <div>
-          <label class="field-lbl">Custom MAC</label>
-          <input id="drw-mac" class="input mono" style="width:100%" value="${escHtml(app.custom_mac)}" />
-        </div>
-        <div>
-          <label class="field-lbl">GPS Latitude</label>
-          <input id="drw-lat" type="number" step="0.0001" class="input mono" style="width:100%" value="${app.custom_lat}" />
-        </div>
-        <div>
-          <label class="field-lbl">GPS Longitude</label>
-          <input id="drw-lon" type="number" step="0.0001" class="input mono" style="width:100%" value="${app.custom_lon}" />
+        <div class="m-row-2">
+          <div>
+            <label class="m-lbl">GPS Lat</label>
+            <input id="drw-lat" type="number" step="0.0001" class="m-input m-mono" value="${app.custom_lat}" />
+          </div>
+          <div>
+            <label class="m-lbl">GPS Lon</label>
+            <input id="drw-lon" type="number" step="0.0001" class="m-input m-mono" value="${app.custom_lon}" />
+          </div>
         </div>
       </div>
 
-      <button class="btn btn-primary" style="width:100%;margin-top:16px" id="btn-save-drawer">${escHtml(t('btnSaveApp'))}</button>
+      <button class="m-btn m-btn-primary m-btn-block" style="margin-top:14px" id="btn-save-drawer">
+        ${escHtml(t('btnSaveApp'))}
+      </button>
     `;
 
-    document.getElementById('app-drawer-backdrop').classList.add('open');
+    const backdrop = document.getElementById('app-drawer-backdrop');
+    backdrop.classList.add('open');
 
     document.getElementById('btn-close-drawer').onclick = () => {
-      document.getElementById('app-drawer-backdrop').classList.remove('open');
+      backdrop.classList.remove('open');
       state.openDrawerUid = null;
     };
 
@@ -614,14 +693,14 @@
         custom_lat: Number(document.getElementById('drw-lat').value),
         custom_lon: Number(document.getElementById('drw-lon').value)
       });
-      document.getElementById('app-drawer-backdrop').classList.remove('open');
+      backdrop.classList.remove('open');
       state.openDrawerUid = null;
       showToast(t('toastSaved'));
-      await refreshSnapshot();
+      await refreshSnapshot(true);
     };
   }
 
-  /* ---- Real-Time Android 17 System Permission Prompt Modal ---- */
+  /* ---- Real-Time Android 17 System Permission Prompt Sheet ---- */
   function checkAndRenderInteractivePrompts() {
     const prompts = (state.snapshot && state.snapshot.prompts) || [];
     const backdrop = document.getElementById('prompt-modal-backdrop');
@@ -641,22 +720,23 @@
     state.activePromptId = p.id;
     const sheet = document.getElementById('prompt-modal-sheet');
     sheet.innerHTML = `
+      <div class="m-sheet-handle"></div>
       ${SentinelSVG.permissionGuardian()}
-      <div class="version-pill" style="display:inline-block;margin-bottom:6px">${escHtml(t('promptHeader'))} • <span id="prompt-rem-sec">${Math.ceil((p.remaining_ms || 9000) / 1000)}s</span></div>
-      <h3 class="section-title">${escHtml(t('promptQuestion'))}</h3>
+      <span class="m-ver" style="display:inline-block;margin-bottom:6px">${escHtml(t('promptHeader'))} • <span id="prompt-rem-sec">${Math.ceil((p.remaining_ms || 9000) / 1000)}s</span></span>
+      <h3 class="m-h2">${escHtml(t('promptQuestion'))}</h3>
 
-      <div class="prompt-detail-box">
-        <div><strong>${escHtml(p.app_label)}</strong> <span class="mono">(UID ${p.uid})</span></div>
-        <div class="mono" style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px">${escHtml(p.package_name)}</div>
-        <div class="mono" style="color:var(--accent-primary);font-weight:700">${escHtml(p.resource_title)}</div>
+      <div class="m-prompt-box">
+        <div><strong>${escHtml(p.app_label)}</strong> <span class="m-mono">(UID ${p.uid})</span></div>
+        <div class="m-mono" style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${escHtml(p.package_name)}</div>
+        <div class="m-mono" style="color:var(--accent-primary);font-weight:700;word-break:break-all">${escHtml(p.resource_title)}</div>
         <div style="font-size:11.5px;color:var(--text-secondary);margin-top:4px">${escHtml(p.detail)}</div>
       </div>
 
-      <div class="prompt-choices">
-        <button class="btn btn-ok" data-prompt-dec="allow_once">${escHtml(t('promptAllowOnce'))}</button>
-        <button class="btn btn-primary" data-prompt-dec="allow_always">${escHtml(t('promptAllowAlways'))}</button>
-        <button class="btn btn-warn" data-prompt-dec="spoof">${escHtml(t('promptSpoofInstead'))}</button>
-        <button class="btn btn-danger" data-prompt-dec="deny">${escHtml(t('promptDenySilent'))}</button>
+      <div class="m-prompt-actions">
+        <button class="m-btn m-btn-ok m-btn-block" data-prompt-dec="allow_once">${escHtml(t('promptAllowOnce'))}</button>
+        <button class="m-btn m-btn-primary m-btn-block" data-prompt-dec="allow_always">${escHtml(t('promptAllowAlways'))}</button>
+        <button class="m-btn m-btn-warn m-btn-block" data-prompt-dec="spoof">${escHtml(t('promptSpoofInstead'))}</button>
+        <button class="m-btn m-btn-danger m-btn-block" data-prompt-dec="deny">${escHtml(t('promptDenySilent'))}</button>
       </div>
     `;
 
@@ -673,17 +753,17 @@
     });
   }
 
-  function renderAll() {
+  function renderAll(forceFormSync = false) {
     renderHeroAndSubsystems();
     renderAppsList();
     renderEventStream();
-    renderFirewallAndIpcTab();
-    renderSpoofAndProxyTab();
+    renderFirewallAndIpcTab(forceFormSync);
+    renderSpoofAndProxyTab(forceFormSync);
     renderSystemTab();
     checkAndRenderInteractivePrompts();
   }
 
-  async function refreshSnapshot() {
+  async function refreshSnapshot(forceFormSync = false) {
     const [st, dash] = await Promise.all([
       SentinelBridge.rpc('status', {}),
       SentinelBridge.rpc('dashboard', { limit: 80 })
@@ -691,24 +771,55 @@
     if (st && st.ok) state.status = st;
     if (dash && dash.ok) {
       state.snapshot = dash;
-      renderAll();
+      renderAll(forceFormSync);
     }
   }
 
-  /* ---- Event Listeners & Initialization ---- */
+  function bindSubSwitcher(attr, stateProp, prefix) {
+    document.querySelectorAll(`[${attr}]`).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute(attr);
+        state[stateProp] = val;
+        document.querySelectorAll(`[${attr}]`).forEach((b) => b.classList.toggle('active', b === btn));
+        document.querySelectorAll(`[id^="${prefix}-"]`).forEach((pane) => {
+          pane.classList.toggle('active', pane.id === `${prefix}-${val}`);
+        });
+      });
+    });
+  }
+
   function bindGlobalEvents() {
-    /* Navigation Dock */
+    /* Bottom Navigation */
     document.querySelectorAll('[data-nav]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.activeTab = btn.dataset.nav;
         document.querySelectorAll('[data-nav]').forEach((b) => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.view-pane').forEach((v) => {
+        document.querySelectorAll('.m-pane').forEach((v) => {
           v.classList.toggle('active', v.id === `view-${state.activeTab}`);
         });
+        window.scrollTo({ top: 0, behavior: 'instant' });
       });
     });
 
-    /* Design Switcher */
+    /* Mobile Sub-Tab Switchers */
+    bindSubSwitcher('data-dash-sub', 'dashSub', 'dash-sub');
+    bindSubSwitcher('data-fw-sub', 'fwSub', 'fw-sub');
+    bindSubSwitcher('data-sp-sub', 'spSub', 'sp-sub');
+
+    /* Header 1-Tap Theme & Language Toggles */
+    document.getElementById('btn-quick-theme').addEventListener('click', () => {
+      state.design = state.design === 'obsidian' ? 'ceramic' : 'obsidian';
+      localStorage.setItem('sentinel_design', state.design);
+      applyDesignAndLanguage();
+    });
+
+    document.getElementById('btn-quick-lang').addEventListener('click', () => {
+      state.lang = state.lang === 'ru' ? 'en' : 'ru';
+      localStorage.setItem('sentinel_lang', state.lang);
+      applyDesignAndLanguage();
+    });
+
+    /* System Tab Theme & Language Cards */
     document.querySelectorAll('[data-theme-pick]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.design = btn.dataset.themePick;
@@ -717,7 +828,6 @@
       });
     });
 
-    /* Language Switcher */
     document.querySelectorAll('[data-lang-pick]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.lang = btn.dataset.langPick;
@@ -726,7 +836,7 @@
       });
     });
 
-    /* Global Profile */
+    /* Global Security Profile */
     document.querySelectorAll('[data-profile]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         await SentinelBridge.rpc('set_global', { global_profile: Number(btn.dataset.profile) });
@@ -735,28 +845,28 @@
       });
     });
 
-    /* Screen-Off / Deep Sleep Toggle */
+    /* Sleep State Toggle */
     document.getElementById('btn-toggle-sleep').addEventListener('click', async () => {
       const next = !(state.snapshot && state.snapshot.screen_sleeping);
       await SentinelBridge.rpc('set_global', { screen_sleeping: next });
-      showToast(next ? 'Deep Sleep active: sockets severed' : 'Screen awake: normal policy');
+      showToast(next ? t('btnSleepSimOn') : t('btnSleepSimOff'));
       await refreshSnapshot();
     });
 
-    /* Trigger Interactive Android 17 Permission Prompt */
+    /* Test Android 17 Interactive Prompt */
     document.getElementById('btn-trigger-prompt').addEventListener('click', async () => {
       await SentinelBridge.rpc('trigger_prompt', {
         uid: 10318,
         package_name: 'com.alibaba.aliexpresshd',
         category: CAT.NETWORK,
-        resource_title: 'TCP Connect -> acs.aliexpress.com:443',
-        detail: 'Blocked sandboxed app requested external network socket while in background',
+        resource_title: 'TCP -> acs.aliexpress.com:443',
+        detail: 'Blocked background app requested external socket',
         is_background: true
       });
       await refreshSnapshot();
     });
 
-    /* Search & Show System Apps */
+    /* Search & System Apps */
     document.getElementById('app-search-input').addEventListener('input', (e) => {
       state.searchQuery = e.target.value.trim();
       renderAppsList();
@@ -768,23 +878,37 @@
       await refreshSnapshot();
     });
 
-    /* Clear Stream */
+    /* Clear Telemetry Stream */
     document.getElementById('btn-clear-events').addEventListener('click', async () => {
       await SentinelBridge.rpc('clear_events', {});
       await refreshSnapshot();
     });
 
-    /* Save Sleep Config */
-    document.getElementById('btn-save-sleep').addEventListener('click', async () => {
-      await SentinelBridge.rpc('set_global', {
-        sleep_mode: Number(document.getElementById('sel-sleep-mode').value),
-        sleep_grace_sec: Number(document.getElementById('sel-sleep-grace').value)
+    /* Grace Delay Segmented Buttons */
+    document.querySelectorAll('[data-grace]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.dirtyFormLockUntil = Date.now() + 5000;
+        state.selectedGrace = Number(btn.dataset.grace);
+        document.querySelectorAll('[data-grace]').forEach((b) => b.classList.toggle('active', b === btn));
       });
-      showToast(t('toastSaved'));
-      await refreshSnapshot();
     });
 
-    /* Add IPC Matrix Rule */
+    document.getElementById('sel-sleep-mode').addEventListener('focus', () => {
+      state.dirtyFormLockUntil = Date.now() + 5000;
+    });
+
+    /* Save Sleep Policy */
+    document.getElementById('btn-save-sleep').addEventListener('click', async () => {
+      state.dirtyFormLockUntil = 0;
+      await SentinelBridge.rpc('set_global', {
+        sleep_mode: Number(document.getElementById('sel-sleep-mode').value),
+        sleep_grace_sec: state.selectedGrace
+      });
+      showToast(t('toastSaved'));
+      await refreshSnapshot(true);
+    });
+
+    /* Add IPC Rule */
     document.getElementById('btn-add-ipc-rule').addEventListener('click', async () => {
       const caller = document.getElementById('ipc-caller').value.trim() || '*';
       const target = document.getElementById('ipc-target').value.trim() || '*';
@@ -797,11 +921,13 @@
         component_type: comp,
         allow: false
       });
+      document.getElementById('ipc-caller').value = '';
+      document.getElementById('ipc-target').value = '';
       showToast(t('toastSaved'));
-      await refreshSnapshot();
+      await refreshSnapshot(true);
     });
 
-    /* Inspect Compiled Kernel iptables & IntentFirewall XML */
+    /* Inspect Kernel Rules */
     document.getElementById('btn-inspect-rules').addEventListener('click', async () => {
       const box = document.getElementById('compiled-rules-box');
       if (box.style.display === 'block') {
@@ -819,11 +945,12 @@
     document.getElementById('btn-rotate-seed').addEventListener('click', async () => {
       await SentinelBridge.rpc('rotate_seed', {});
       showToast(t('toastSaved'));
-      await refreshSnapshot();
+      await refreshSnapshot(true);
     });
 
-    /* Save Per-App SOCKS5 Proxy */
+    /* Save SOCKS5 Proxy */
     document.getElementById('btn-save-proxy').addEventListener('click', async () => {
+      state.dirtyFormLockUntil = 0;
       await SentinelBridge.rpc('set_proxy', {
         enabled: document.getElementById('chk-proxy-enable').checked,
         socks5_host: document.getElementById('inp-proxy-host').value.trim(),
@@ -834,7 +961,7 @@
         block_ipv6: document.getElementById('chk-proxy-ipv6').checked
       });
       showToast(t('toastSaved'));
-      await refreshSnapshot();
+      await refreshSnapshot(true);
     });
 
     /* Manual Token Submit */
@@ -844,7 +971,7 @@
       const st = await SentinelBridge.rpc('status', {});
       if (st && st.ok) {
         document.getElementById('token-modal-backdrop').classList.remove('open');
-        await refreshSnapshot();
+        await refreshSnapshot(true);
         SentinelBridge.startLiveStream((snap) => {
           state.snapshot = snap;
           renderAll();
@@ -852,10 +979,12 @@
       }
     });
 
-    /* Android Back / Escape closes modals cleanly */
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        document.getElementById('app-drawer-backdrop').classList.remove('open');
+    /* Tap outside bottom sheet closes App Dossier cleanly */
+    const appBackdrop = document.getElementById('app-drawer-backdrop');
+    appBackdrop.addEventListener('click', (e) => {
+      if (e.target === appBackdrop) {
+        appBackdrop.classList.remove('open');
+        state.openDrawerUid = null;
       }
     });
   }
@@ -870,14 +999,13 @@
     });
 
     if (init.ok) {
-      await refreshSnapshot();
+      await refreshSnapshot(true);
       SentinelBridge.startLiveStream((snap) => {
         state.snapshot = snap;
         renderAll();
       });
-      /* Fallback poll if in ksu_native mode (no SSE socket needed) */
       if (SentinelBridge.mode === 'ksu_native') {
-        setInterval(refreshSnapshot, 2200);
+        setInterval(() => refreshSnapshot(false), 2200);
       }
     }
   }

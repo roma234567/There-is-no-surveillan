@@ -44,8 +44,8 @@ android {
         applicationId = "org.privacysentinel.vector"
         minSdk = 31
         targetSdk = 35
-        versionCode = 100
-        versionName = "1.0.0-garnet-a17"
+        versionCode = 200
+        versionName = "2.0.0-garnet-a17"
     }
 
     buildTypes {

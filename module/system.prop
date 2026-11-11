@@ -1,2 +1,2 @@
-# Safe non-invasive runtime marker (never touches ro.build.* or Play Integrity props)
-persist.privacysentinel.version=1.0.0
+# Privacy Sentinel v2.0 — Non-sensitive runtime marker
+persist.privacysentinel.version=2.0.0

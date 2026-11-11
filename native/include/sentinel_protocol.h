@@ -13,7 +13,7 @@ extern "C" {
  * Root Stack: BakaSU (KernelSU + SuSFS) + Zygisk Next + Vector (LibXposed 102)
  * ============================================================================ */
 
-#define SENTINEL_VERSION_STR          "1.0.0-garnet"
+#define SENTINEL_VERSION_STR          "2.0.0-garnet"
 #define SENTINEL_PROTOCOL_MAGIC       0x50534E54u /* "PSNT" */
 #define SENTINEL_PROTOCOL_VERSION     1u
 

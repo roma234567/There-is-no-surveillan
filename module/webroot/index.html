@@ -2,346 +2,380 @@
 <html lang="ru" data-design="obsidian">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Privacy Sentinel — Android 17 / BakaSU WebUI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Privacy Sentinel v2.0 Mobile</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <!-- Top Tactical Bar -->
-    <header class="topbar">
-      <div class="brand-group">
-        <div id="brand-crest-slot"></div>
-        <div>
-          <h1 class="brand-title">
-            <span>Privacy Sentinel</span>
-            <span class="version-pill" id="hdr-version">v1.0.0-garnet</span>
-          </h1>
-          <div class="brand-meta" data-i18n="brandSub">BakaSU • SuSFS • Zygisk Next • Vector API 102</div>
+  <!-- Sticky Native Mobile App Bar (Single Clean Row) -->
+  <header class="m-appbar">
+    <div class="m-brand">
+      <div class="m-crest" id="brand-crest-slot"></div>
+      <div class="m-brand-text">
+        <div class="m-title-row">
+          <span class="m-title">Privacy Sentinel</span>
+          <span class="m-ver" id="hdr-version">v2.0</span>
         </div>
+        <div class="m-sub" data-i18n="brandSub">POCO X6 5G • BakaSU • SuSFS • A17</div>
       </div>
+    </div>
 
-      <div class="topbar-controls">
-        <!-- Global Security Profile -->
-        <div class="segmented" role="group" aria-label="Security Profile">
-          <button class="seg-btn" data-profile="0" data-i18n="profileMonitor">Мониторинг</button>
-          <button class="seg-btn active" data-profile="1" data-i18n="profileBalanced">Баланс</button>
-          <button class="seg-btn" data-profile="2" data-i18n="profileLockdown">Изоляция</button>
-        </div>
+    <div class="m-hdr-actions">
+      <button class="m-icon-btn" id="btn-quick-theme" aria-label="Switch Theme"></button>
+      <button class="m-chip-btn" id="btn-quick-lang">RU</button>
+    </div>
+  </header>
 
-        <!-- Quick Screen-Off / Deep Sleep Toggle -->
-        <button class="btn" id="btn-toggle-sleep">
-          <span id="sleep-btn-label" data-i18n="btnSleepSimOff">Экран активен</span>
-        </button>
-
-        <!-- Test Android 17 Interactive System Permission Dialog -->
-        <button class="btn btn-warn" id="btn-trigger-prompt" data-i18n="btnTestPrompt">
-          Тест запроса Android 17
-        </button>
-
-        <!-- Dual Design Switcher (Obsidian Matte vs Nordic Ceramic) -->
-        <div class="segmented" role="group" aria-label="Design System">
-          <button class="seg-btn active" data-theme-pick="obsidian" data-i18n="designObsidian">Обсидиан</button>
-          <button class="seg-btn" data-theme-pick="ceramic" data-i18n="designCeramic">Керамика</button>
-        </div>
-
-        <!-- Language Switcher (RU / EN) -->
-        <div class="segmented" role="group" aria-label="Language">
-          <button class="seg-btn active" data-lang-pick="ru">RU</button>
-          <button class="seg-btn" data-lang-pick="en">EN</button>
-        </div>
-      </div>
-    </header>
-
+  <div class="m-viewport">
     <!-- ================================================================
-         TAB 1: REAL-TIME ACTIVITY RADAR & APP THREAT PLAQUES
+         TAB 1: RADAR, APPS & LIVE TELEMETRY (MOBILE SEGMENTED)
          ================================================================ -->
-    <main id="view-dashboard" class="view-pane active">
-      <section class="hero-grid">
-        <div class="card radar-card">
-          <div id="hero-radar-slot"></div>
-          <div class="radar-info">
-            <h2 class="section-title" data-i18n="radarTitle">Активность и перехват в реальном времени</h2>
-            <p class="section-sub" data-i18n="radarDesc">Кольцевой буфер ядра в RAM (15 000 событий) • Без износа памяти и фонового APK</p>
-            <div class="kpi-row">
-              <div class="kpi-box">
-                <div class="kpi-val" id="kpi-events">0</div>
-                <div class="kpi-lbl" data-i18n="statTotalEvents">Перехвачено событий</div>
-              </div>
-              <div class="kpi-box">
-                <div class="kpi-val" id="kpi-blocked">0</div>
-                <div class="kpi-lbl" data-i18n="statBlocked">Подавлено угроз</div>
-              </div>
-              <div class="kpi-box">
-                <div class="kpi-val" id="kpi-spoofed">0</div>
-                <div class="kpi-lbl" data-i18n="statSpoofed">Подменено (Spoof)</div>
-              </div>
-              <div class="kpi-box">
-                <div class="kpi-val" id="kpi-ring">0 / 15k</div>
-                <div class="kpi-lbl" data-i18n="statRingBuffer">Буфер в RAM</div>
-              </div>
+    <main id="view-dashboard" class="m-pane active">
+      <!-- Compact Tactical Hero Card -->
+      <section class="m-card m-hero-card">
+        <div class="m-hero-top">
+          <div class="m-radar-box" id="hero-radar-slot"></div>
+          <div class="m-kpi-grid">
+            <div class="m-kpi">
+              <div class="m-kpi-val" id="kpi-events">0</div>
+              <div class="m-kpi-lbl" data-i18n="statTotalEvents">Событий</div>
             </div>
-            <div class="sparkline-wrap" id="sparkline-slot"></div>
+            <div class="m-kpi">
+              <div class="m-kpi-val m-val-danger" id="kpi-blocked">0</div>
+              <div class="m-kpi-lbl" data-i18n="statBlocked">Подавлено</div>
+            </div>
+            <div class="m-kpi">
+              <div class="m-kpi-val m-val-warn" id="kpi-spoofed">0</div>
+              <div class="m-kpi-lbl" data-i18n="statSpoofed">Подменено</div>
+            </div>
+            <div class="m-kpi">
+              <div class="m-kpi-val" id="kpi-ring">0/15k</div>
+              <div class="m-kpi-lbl" data-i18n="statRingBuffer">Буфер RAM</div>
+            </div>
           </div>
         </div>
 
-        <div class="card subsystem-grid" id="subsystem-tiles-slot"></div>
-      </section>
-
-      <!-- Category SVG Filter Pills & Search -->
-      <section class="filter-bar">
-        <div class="pill-scroll" id="category-pills"></div>
-        <div class="search-row">
-          <input type="search" id="app-search-input" class="input" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск по имени, пакету или UID..." />
-          <label class="switch-label">
-            <input type="checkbox" class="switch-input" id="chk-system-apps" />
-            <span data-i18n="toggleSystemApps">Системные (UID &lt; 10000)</span>
-          </label>
+        <!-- 3-Way Global Profile Bar -->
+        <div class="m-seg m-seg-3" role="group" aria-label="Security Profile">
+          <button class="m-seg-btn" data-profile="0" data-i18n="profileMonitor">Монитор</button>
+          <button class="m-seg-btn active" data-profile="1" data-i18n="profileBalanced">Баланс</button>
+          <button class="m-seg-btn" data-profile="2" data-i18n="profileLockdown">Изоляция</button>
         </div>
+
+        <!-- Quick Mobile Action Row -->
+        <div class="m-hero-actions">
+          <button class="m-btn m-btn-compact" id="btn-toggle-sleep">
+            <span id="sleep-ic-slot"></span>
+            <span id="sleep-btn-label" data-i18n="btnSleepSimOff">Сон: ВЫКЛ</span>
+          </button>
+          <button class="m-btn m-btn-compact m-btn-warn" id="btn-trigger-prompt">
+            <span data-i18n="btnTestPrompt">Тест окна A17</span>
+          </button>
+        </div>
+
+        <div class="m-sparkline" id="sparkline-slot"></div>
       </section>
 
-      <section class="dashboard-columns">
-        <!-- Active Apps with SVG Threat Plaques -->
-        <div class="apps-list" id="apps-list-container"></div>
+      <!-- Horizontal Touch-Swipe Category Pills -->
+      <div class="m-pill-strip" id="category-pills"></div>
 
-        <!-- Live Telemetry Feed -->
-        <aside class="card stream-card">
-          <div class="stream-header">
-            <h3 class="section-title" style="margin:0" data-i18n="streamTitle">Живой журнал телеметрии</h3>
-            <button class="btn" id="btn-clear-events" data-i18n="btnClearStream">Очистить буфер</button>
-          </div>
-          <div class="event-feed" id="live-event-feed"></div>
-        </aside>
+      <!-- Search + System UID Switch -->
+      <section class="m-card m-search-card">
+        <div class="m-search-box">
+          <span class="m-search-ic" id="search-ic-slot"></span>
+          <input type="search" id="app-search-input" class="m-search-input" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск по имени, пакету или UID..." />
+        </div>
+        <label class="m-switch-row m-switch-compact">
+          <span data-i18n="toggleSystemApps">Системные процессы (UID &lt; 10000)</span>
+          <input type="checkbox" class="m-switch" id="chk-system-apps" />
+        </label>
       </section>
+
+      <!-- Sub-Switcher: Apps vs Live Log (Zero Endless Scrolling) -->
+      <div class="m-seg m-seg-2">
+        <button class="m-seg-btn active" data-dash-sub="apps">
+          <span data-i18n="subTabApps">Приложения</span>
+          <span class="m-count-pill" id="cnt-apps-pill">0</span>
+        </button>
+        <button class="m-seg-btn" data-dash-sub="stream">
+          <span data-i18n="subTabStream">Журнал</span>
+          <span class="m-count-pill" id="cnt-stream-pill">0</span>
+        </button>
+      </div>
+
+      <!-- Sub-Pane 1A: Mobile App Cards -->
+      <div id="dash-sub-apps" class="m-subpane active">
+        <div class="m-list" id="apps-list-container"></div>
+      </div>
+
+      <!-- Sub-Pane 1B: Live Telemetry Feed -->
+      <div id="dash-sub-stream" class="m-subpane">
+        <div class="m-stream-bar">
+          <span class="m-stream-lbl" data-i18n="streamTitle">Живой поток (15 000 в RAM)</span>
+          <button class="m-btn m-btn-sm" id="btn-clear-events" data-i18n="btnClearStream">Очистить</button>
+        </div>
+        <div class="m-list" id="live-event-feed"></div>
+      </div>
     </main>
 
     <!-- ================================================================
-         TAB 2: FIREWALL, DEEP SLEEP 3-MODE & IPC MATRIX
+         TAB 2: FIREWALL, 3-MODE DEEP SLEEP & IPC MATRIX
          ================================================================ -->
-    <section id="view-firewall" class="view-pane">
-      <div class="stack-grid">
-        <!-- Deep Sleep 3-Mode Auto-Disconnect -->
-        <div class="card">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <div id="sleep-art-slot"></div>
-            <div>
-              <h2 class="section-title" data-i18n="sleepCardTitle">Автообрыв соединений в режиме сна</h2>
-              <p class="section-sub" style="margin:0" data-i18n="sleepCardSub">Сброс активных TCP/UDP сессий через NETLINK_SOCK_DIAG</p>
+    <section id="view-firewall" class="m-pane">
+      <div class="m-seg m-seg-2">
+        <button class="m-seg-btn active" data-fw-sub="sleep" data-i18n="subTabSleep">Режим сна</button>
+        <button class="m-seg-btn" data-fw-sub="ipc" data-i18n="subTabIpc">Экран IPC</button>
+      </div>
+
+      <!-- Sub-Pane 2A: Deep Sleep 3-Mode Cutoff -->
+      <div id="fw-sub-sleep" class="m-subpane active">
+        <div class="m-card">
+          <div class="m-card-hdr">
+            <div class="m-card-art" id="sleep-art-slot"></div>
+            <div class="m-card-hdr-txt">
+              <h2 class="m-h2" data-i18n="sleepCardTitle">Обрыв сети при выключении экрана</h2>
+              <p class="m-p" data-i18n="sleepCardSub">Сброс открытых TCP/UDP сокетов через NETLINK_SOCK_DIAG + блокировка трафика</p>
             </div>
           </div>
 
-          <div class="form-grid">
-            <div class="field-full">
-              <label class="field-lbl" data-i18n="sleepModeLabel">Режим отключения при выключении экрана</label>
-              <select id="sel-sleep-mode" class="input" style="width:100%">
-                <option value="0" data-i18n="sleepModeOff">Выключено (не рвать соединения)</option>
-                <option value="1" data-i18n="sleepModeSelected">Отключать только выбранные приложения</option>
-                <option value="2" data-i18n="sleepModeExcept">Отключать все, кроме выбранных (Белый список)</option>
-                <option value="3" data-i18n="sleepModeAll">Отключать вообще все пользовательские приложения</option>
-              </select>
-            </div>
-            <div>
-              <label class="field-lbl" data-i18n="sleepGraceLabel">Задержка после гашения экрана</label>
-              <select id="sel-sleep-grace" class="input" style="width:100%">
-                <option value="0">0 sec (Instant)</option>
-                <option value="15" selected>15 sec</option>
-                <option value="30">30 sec</option>
-                <option value="60">60 sec</option>
-              </select>
-            </div>
-            <div style="display:flex;align-items:flex-end;">
-              <button class="btn btn-primary" style="width:100%" id="btn-save-sleep">OK • Sync Policy</button>
-            </div>
+          <label class="m-lbl" data-i18n="sleepModeLabel">Режим работы при гашении экрана</label>
+          <select id="sel-sleep-mode" class="m-input">
+            <option value="0" data-i18n="sleepModeOff">Выключено (не отключать сеть)</option>
+            <option value="1" data-i18n="sleepModeSelected">Только выбранные приложения</option>
+            <option value="2" data-i18n="sleepModeExcept">Все, кроме выбранных (Белый список)</option>
+            <option value="3" data-i18n="sleepModeAll">Вообще все приложения</option>
+          </select>
+
+          <label class="m-lbl" style="margin-top:12px" data-i18n="sleepGraceLabel">Задержка после выключения экрана</label>
+          <div class="m-seg m-seg-4" id="sleep-grace-seg">
+            <button class="m-seg-btn" data-grace="0">0s</button>
+            <button class="m-seg-btn active" data-grace="15">15s</button>
+            <button class="m-seg-btn" data-grace="30">30s</button>
+            <button class="m-seg-btn" data-grace="60">60s</button>
           </div>
 
-          <p class="section-sub" style="margin-top:12px" data-i18n="sleepAppListHint">Отметьте приложения для выбранного режима сна:</p>
-          <div class="app-check-grid" id="sleep-apps-checklist"></div>
+          <button class="m-btn m-btn-primary m-btn-block" style="margin-top:12px" id="btn-save-sleep" data-i18n="btnSaveSleep">
+            Сохранить режим сна
+          </button>
         </div>
 
-        <!-- IPC & IntentFirewall Matrix -->
-        <div class="card">
-          <h2 class="section-title" data-i18n="ipcMatrixTitle">Межпроцессный экран (IPC IntentFirewall + Binder)</h2>
-          <p class="section-sub" data-i18n="ipcMatrixSub">Трёхслойная фильтрация: AOSP /data/system/ifw + Vector AMS + libbinder</p>
+        <div class="m-card">
+          <div class="m-lbl" style="margin-bottom:6px" data-i18n="sleepAppListHint">Список приложений для режима сна:</div>
+          <div class="m-check-list" id="sleep-apps-checklist"></div>
+        </div>
+      </div>
 
-          <div class="form-grid">
-            <div>
-              <input id="ipc-caller" class="input mono" style="width:100%" placeholder="com.zhiliaoapp.musically / *" data-i18n-placeholder="ipcCallerPlaceholder" />
-            </div>
-            <div>
-              <input id="ipc-target" class="input mono" style="width:100%" placeholder="com.xiaomi.mipicks / *" data-i18n-placeholder="ipcTargetPlaceholder" />
-            </div>
-            <div>
-              <input id="ipc-action" class="input mono" style="width:100%" value="*" data-i18n-placeholder="ipcActionPlaceholder" />
-            </div>
-            <div>
-              <select id="ipc-comp" class="input" style="width:100%">
+      <!-- Sub-Pane 2B: IPC & IntentFirewall Matrix (Mobile Cards, Zero Tables) -->
+      <div id="fw-sub-ipc" class="m-subpane">
+        <div class="m-card">
+          <h2 class="m-h2" data-i18n="ipcMatrixTitle">Межпроцессный экран (IPC + Binder)</h2>
+          <p class="m-p" data-i18n="ipcMatrixSub">IntentFirewall XML + Vector system_server + libbinder</p>
+
+          <div class="m-stack-fields">
+            <input id="ipc-caller" class="m-input m-mono" placeholder="Отправитель (пакет или *)" data-i18n-placeholder="ipcCallerPlaceholder" />
+            <input id="ipc-target" class="m-input m-mono" placeholder="Получатель (пакет или *)" data-i18n-placeholder="ipcTargetPlaceholder" />
+            <div class="m-row-2">
+              <select id="ipc-comp" class="m-input">
                 <option value="service" data-i18n="ipcCompService">Сервис (Service)</option>
                 <option value="broadcast" data-i18n="ipcCompBroadcast">Вещание (Broadcast)</option>
                 <option value="activity" data-i18n="ipcCompActivity">Экран (Activity)</option>
                 <option value="all" data-i18n="ipcCompAll">Все типы IPC</option>
               </select>
+              <input id="ipc-action" class="m-input m-mono" value="*" data-i18n-placeholder="ipcActionPlaceholder" />
             </div>
-            <div class="field-full">
-              <button class="btn btn-primary" style="width:100%" id="btn-add-ipc-rule" data-i18n="btnAddBlockRule">Добавить правило блокировки</button>
+            <button class="m-btn m-btn-primary m-btn-block" id="btn-add-ipc-rule" data-i18n="btnAddBlockRule">
+              Заблокировать IPC вызов
+            </button>
+          </div>
+        </div>
+
+        <div class="m-list" id="ipc-rules-list"></div>
+
+        <button class="m-btn m-btn-block" id="btn-inspect-rules" data-i18n="btnInspectKernel">
+          Код правил ядра (iptables + IFW)
+        </button>
+        <pre class="m-code" id="compiled-rules-box" style="display:none"></pre>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         TAB 3: ANTI-SPY, DATA SPOOFING & PER-APP SOCKS5 / TOR
+         ================================================================ -->
+    <section id="view-spoof" class="m-pane">
+      <div class="m-seg m-seg-2">
+        <button class="m-seg-btn active" data-sp-sub="antispy" data-i18n="subTabAntispy">Маски / Spy</button>
+        <button class="m-seg-btn" data-sp-sub="proxy" data-i18n="subTabProxy">SOCKS5 / Tor</button>
+      </div>
+
+      <!-- Sub-Pane 3A: Anti-Spy & Identifier Spoofing -->
+      <div id="sp-sub-antispy" class="m-subpane active">
+        <div class="m-card">
+          <div class="m-card-hdr">
+            <div class="m-card-art" id="antispy-art-slot"></div>
+            <div class="m-card-hdr-txt">
+              <h2 class="m-h2" data-i18n="antiSpyTitle">Анти-Шпион и подмена данных</h2>
+              <p class="m-p" data-i18n="antiSpySub">Тишина микрофона в фоне (совместимо с ViPER4Android), защита камеры, буфера и отпечатков</p>
             </div>
           </div>
 
-          <table class="rule-table">
-            <thead>
-              <tr>
-                <th>Caller</th>
-                <th>Target</th>
-                <th>Type / Action</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="ipc-rules-tbody"></tbody>
-          </table>
+          <div class="m-seed-bar">
+            <span class="m-mono-badge" id="seed-badge">Seed: 0x0</span>
+            <button class="m-btn m-btn-sm" id="btn-rotate-seed" data-i18n="btnRotateSeed">Сменить Seed</button>
+          </div>
+        </div>
 
-          <button class="btn" style="width:100%;margin-top:12px" id="btn-inspect-rules" data-i18n="btnInspectKernel">
-            Показать сгенерированный код iptables и IFW XML
+        <div class="m-list" id="spoof-apps-list"></div>
+      </div>
+
+      <!-- Sub-Pane 3B: Per-App Transparent SOCKS5 / Tor Relay -->
+      <div id="sp-sub-proxy" class="m-subpane">
+        <div class="m-card">
+          <h2 class="m-h2" data-i18n="proxyCardTitle">Прозрачный SOCKS5 / Tor без VPN</h2>
+          <p class="m-p" data-i18n="proxyCardSub">Встроен в sentineld (iptables REDIRECT по UID — не триггерит Play Integrity и банки)</p>
+
+          <label class="m-switch-row">
+            <span data-i18n="proxyEnable">Включить прозрачный SOCKS5 релей</span>
+            <input type="checkbox" class="m-switch" id="chk-proxy-enable" />
+          </label>
+
+          <div class="m-stack-fields" style="margin-top:10px">
+            <div class="m-row-hostport">
+              <div>
+                <label class="m-lbl" data-i18n="proxyHost">IP адрес SOCKS5 / Tor</label>
+                <input id="inp-proxy-host" class="m-input m-mono" value="127.0.0.1" />
+              </div>
+              <div>
+                <label class="m-lbl" data-i18n="proxyPort">Порт</label>
+                <input id="inp-proxy-port" type="number" class="m-input m-mono" value="9050" />
+              </div>
+            </div>
+            <div class="m-row-2">
+              <div>
+                <label class="m-lbl" data-i18n="proxyUser">Логин (необяз.)</label>
+                <input id="inp-proxy-user" class="m-input m-mono" />
+              </div>
+              <div>
+                <label class="m-lbl" data-i18n="proxyPass">Пароль (необяз.)</label>
+                <input id="inp-proxy-pass" type="password" class="m-input m-mono" />
+              </div>
+            </div>
+          </div>
+
+          <label class="m-switch-row" style="margin-top:6px">
+            <span data-i18n="proxyQuic">Блокировать QUIC (UDP/443)</span>
+            <input type="checkbox" class="m-switch" id="chk-proxy-quic" checked />
+          </label>
+          <label class="m-switch-row">
+            <span data-i18n="proxyIpv6">Блокировать утечки IPv6</span>
+            <input type="checkbox" class="m-switch" id="chk-proxy-ipv6" checked />
+          </label>
+
+          <button class="m-btn m-btn-primary m-btn-block" style="margin-top:12px" id="btn-save-proxy" data-i18n="btnSaveProxy">
+            Применить настройки прокси
           </button>
-          <pre class="code-preview" id="compiled-rules-box" style="display:none"></pre>
+        </div>
+
+        <div class="m-card">
+          <div class="m-lbl" style="margin-bottom:6px" data-i18n="proxyAppsHint">Приложения, направляемые через SOCKS5:</div>
+          <div class="m-check-list" id="proxy-apps-checklist"></div>
         </div>
       </div>
     </section>
 
     <!-- ================================================================
-         TAB 3: ANTI-SPY, DATA SPOOFING & PER-APP SOCKS5 / TOR RELAY
+         TAB 4: APPEARANCE, SUBSYSTEMS & HARDWARE COMPATIBILITY
          ================================================================ -->
-    <section id="view-spoof" class="view-pane">
-      <div class="stack-grid">
-        <div class="card">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <div id="antispy-art-slot"></div>
-            <div>
-              <h2 class="section-title" data-i18n="antiSpyTitle">Анти-Шпион и подмена идентификаторов</h2>
-              <p class="section-sub" style="margin:0" data-i18n="antiSpySub">Защита от отпечатков, Zero-PCM микрофона в фоне (совместимо с ViPER4Android)</p>
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;">
-            <span class="uid-chip" id="seed-badge">Master Seed: 0x0</span>
-            <button class="btn" id="btn-rotate-seed" data-i18n="btnRotateSeed">Сменить Master Seed</button>
-          </div>
-
-          <div id="spoof-apps-list" class="apps-list"></div>
+    <section id="view-system" class="m-pane">
+      <!-- Dual-Design & Language Selector Card -->
+      <div class="m-card">
+        <h2 class="m-h2" data-i18n="appearanceTitle">Оформление и язык панели</h2>
+        <div class="m-theme-cards">
+          <button class="m-theme-card active" data-theme-pick="obsidian">
+            <span class="m-swatch m-swatch-obsidian"></span>
+            <strong data-i18n="designObsidian">Обсидиан (AMOLED)</strong>
+            <small data-i18n="designObsidianSub">Глубокий матовый графит без неона</small>
+          </button>
+          <button class="m-theme-card" data-theme-pick="ceramic">
+            <span class="m-swatch m-swatch-ceramic"></span>
+            <strong data-i18n="designCeramic">Керамика (Светлая)</strong>
+            <small data-i18n="designCeramicSub">Тёплый матовый камень и высокая чёткость</small>
+          </button>
         </div>
 
-        <!-- Per-App Transparent SOCKS5 / Tor Relay -->
-        <div class="card">
-          <h2 class="section-title" data-i18n="proxyCardTitle">Per-App подмена IP (Прозрачный TCP/DNS -&gt; SOCKS5 / Tor)</h2>
-          <p class="section-sub" data-i18n="proxyCardSub">Встроен в sentineld: без VpnService и tun0 (не ломает Play Integrity Fix)</p>
-
-          <div class="option-row">
-            <span data-i18n="proxyEnable">Включить встроенный прозрачный SOCKS5 релей</span>
-            <input type="checkbox" class="switch-input" id="chk-proxy-enable" />
-          </div>
-
-          <div class="form-grid">
-            <div>
-              <label class="field-lbl" data-i18n="proxyHost">Адрес SOCKS5 / Tor (IP)</label>
-              <input id="inp-proxy-host" class="input mono" style="width:100%" value="127.0.0.1" />
-            </div>
-            <div>
-              <label class="field-lbl" data-i18n="proxyPort">Порт SOCKS5</label>
-              <input id="inp-proxy-port" type="number" class="input mono" style="width:100%" value="9050" />
-            </div>
-            <div>
-              <label class="field-lbl" data-i18n="proxyUser">Логин (опционально)</label>
-              <input id="inp-proxy-user" class="input mono" style="width:100%" placeholder="" />
-            </div>
-            <div>
-              <label class="field-lbl" data-i18n="proxyPass">Пароль (опционально)</label>
-              <input id="inp-proxy-pass" type="password" class="input mono" style="width:100%" placeholder="" />
-            </div>
-          </div>
-
-          <div class="option-row" style="margin-top:8px;">
-            <span data-i18n="proxyQuic">Блокировать QUIC (UDP/443) от утечек</span>
-            <input type="checkbox" class="switch-input" id="chk-proxy-quic" checked />
-          </div>
-          <div class="option-row">
-            <span data-i18n="proxyIpv6">Блокировать прямые утечки IPv6</span>
-            <input type="checkbox" class="switch-input" id="chk-proxy-ipv6" checked />
-          </div>
-
-          <button class="btn btn-primary" style="width:100%;margin-top:12px" id="btn-save-proxy" data-i18n="btnSaveProxy">
-            Применить конфигурацию прокси
-          </button>
-
-          <div class="app-check-grid" id="proxy-apps-checklist" style="margin-top:14px"></div>
+        <div class="m-seg m-seg-2" style="margin-top:10px">
+          <button class="m-seg-btn active" data-lang-pick="ru">Русский (RU)</button>
+          <button class="m-seg-btn" data-lang-pick="en">English (EN)</button>
         </div>
       </div>
-    </section>
 
-    <!-- ================================================================
-         TAB 4: SYSTEM, HARDWARE TARGET & ZERO-TOUCH COMPATIBILITY
-         ================================================================ -->
-    <section id="view-system" class="view-pane">
-      <div class="stack-grid">
-        <div class="card">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-            <div id="device-garnet-slot"></div>
-            <div>
-              <h2 class="section-title" data-i18n="sysHardwareTitle">Профиль устройства и совместимость со стеком модулей</h2>
-              <p class="section-sub" style="margin:0" id="sys-hw-summary">POCO X6 5G (garnet) • HyperOS 4 • Android 17 • Linux 5.10</p>
-            </div>
+      <!-- 4-Layer Subsystems Status -->
+      <div class="m-card">
+        <h2 class="m-h2" style="margin-bottom:8px" data-i18n="sysSubsystemsTitle">Активные уровни защиты</h2>
+        <div class="m-subsys-grid" id="subsystem-tiles-slot"></div>
+      </div>
+
+      <!-- POCO X6 5G & Root Stack Compatibility -->
+      <div class="m-card">
+        <div class="m-card-hdr">
+          <div class="m-card-art" id="device-garnet-slot"></div>
+          <div class="m-card-hdr-txt">
+            <h2 class="m-h2" data-i18n="sysHardwareTitle">Совместимость со стеком модулей</h2>
+            <p class="m-p">POCO X6 5G (garnet) • HyperOS 4 • Android 17 • Linux 5.10</p>
           </div>
-          <div id="compat-matrix-slot" class="apps-list"></div>
         </div>
+        <div class="m-list" id="compat-matrix-slot"></div>
+      </div>
 
-        <div class="card">
-          <h2 class="section-title" data-i18n="sysTransportTitle">Двухконтурная безопасность WebUI и обход Android 17</h2>
-          <p class="section-sub" data-i18n="sysTransportSub">Доступ строго 127.0.0.1 по токену + прямой канал ksu.exec -&gt; sentinelctl</p>
-          <div id="security-details-slot" class="apps-list"></div>
-        </div>
+      <div class="m-card">
+        <h2 class="m-h2" style="margin-bottom:8px" data-i18n="sysTransportTitle">Транспорт и защита Android 17</h2>
+        <div class="m-list" id="security-details-slot"></div>
       </div>
     </section>
   </div>
 
-  <!-- Floating Bottom Navigation Dock (SVG Artwork) -->
-  <nav class="bottom-dock" aria-label="Primary Navigation">
-    <button class="dock-btn active" data-nav="dashboard">
-      <span class="dock-icon" id="nav-ic-radar"></span>
-      <span data-i18n="tabDashboard">Радар</span>
+  <!-- Full-Width Native Android Bottom Navigation Bar -->
+  <nav class="m-bottom-nav" aria-label="Primary Navigation">
+    <button class="m-nav-item active" data-nav="dashboard">
+      <span class="m-nav-ic" id="nav-ic-radar"></span>
+      <span class="m-nav-lbl" data-i18n="tabDashboard">Радар</span>
     </button>
-    <button class="dock-btn" data-nav="firewall">
-      <span class="dock-icon" id="nav-ic-fw"></span>
-      <span data-i18n="tabFirewall">Фаервол и IPC</span>
+    <button class="m-nav-item" data-nav="firewall">
+      <span class="m-nav-ic" id="nav-ic-fw"></span>
+      <span class="m-nav-lbl" data-i18n="tabFirewall">Фаервол</span>
     </button>
-    <button class="dock-btn" data-nav="spoof">
-      <span class="dock-icon" id="nav-ic-spoof"></span>
-      <span data-i18n="tabSpoof">Анти-Шпион</span>
+    <button class="m-nav-item" data-nav="spoof">
+      <span class="m-nav-ic" id="nav-ic-spoof"></span>
+      <span class="m-nav-lbl" data-i18n="tabSpoof">Защита</span>
     </button>
-    <button class="dock-btn" data-nav="system">
-      <span class="dock-icon" id="nav-ic-sys"></span>
-      <span data-i18n="tabSystem">Система</span>
+    <button class="m-nav-item" data-nav="system">
+      <span class="m-nav-ic" id="nav-ic-sys"></span>
+      <span class="m-nav-lbl" data-i18n="tabSystem">Система</span>
     </button>
   </nav>
 
-  <!-- Per-App Dossier & Policy Drawer Modal -->
-  <div class="overlay-backdrop" id="app-drawer-backdrop">
-    <div class="modal-sheet" id="app-drawer-sheet"></div>
+  <!-- Native Bottom Sheet: Per-App Policy Dossier -->
+  <div class="m-backdrop" id="app-drawer-backdrop">
+    <div class="m-sheet" id="app-drawer-sheet"></div>
   </div>
 
-  <!-- Real-Time Android 17 System Permission Prompt Modal -->
-  <div class="overlay-backdrop" id="prompt-modal-backdrop">
-    <div class="modal-sheet prompt-sheet" id="prompt-modal-sheet"></div>
+  <!-- Native Bottom Sheet: Android 17 Real-Time System Permission Prompt -->
+  <div class="m-backdrop" id="prompt-modal-backdrop">
+    <div class="m-sheet m-prompt-sheet" id="prompt-modal-sheet"></div>
   </div>
 
-  <!-- External Browser Token Prompt Modal -->
-  <div class="overlay-backdrop" id="token-modal-backdrop">
-    <div class="modal-sheet prompt-sheet">
-      <h3 class="section-title">Privacy Sentinel • X-Sentinel-Token</h3>
-      <p class="section-sub">Введите одноразовый токен из /data/adb/privacy_sentinel/run/webui.token (или кнопки Action в BakaSU Manager):</p>
-      <input id="inp-manual-token" class="input mono" style="width:100%;margin:10px 0" placeholder="64-char hex token..." />
-      <button class="btn btn-primary" style="width:100%" id="btn-submit-token">Подключиться к sentineld</button>
+  <!-- Native Bottom Sheet: External Browser Token Auth -->
+  <div class="m-backdrop" id="token-modal-backdrop">
+    <div class="m-sheet m-prompt-sheet">
+      <div class="m-sheet-handle"></div>
+      <h3 class="m-h2">Privacy Sentinel • X-Sentinel-Token</h3>
+      <p class="m-p">Введите токен из /data/adb/privacy_sentinel/run/webui.token (или нажмите Action в BakaSU):</p>
+      <input id="inp-manual-token" class="m-input m-mono" style="margin:10px 0" placeholder="64-char hex token..." />
+      <button class="m-btn m-btn-primary m-btn-block" id="btn-submit-token">Подключиться</button>
     </div>
   </div>
 
-  <div class="toast" id="toast-banner"></div>
+  <div class="m-toast" id="toast-banner"></div>
 
   <script src="js/icons.js"></script>
   <script src="js/i18n.js"></script>

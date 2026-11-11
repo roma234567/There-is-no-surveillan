@@ -1,5 +1,8 @@
 name: Build Privacy Sentinel (Android 17 / BakaSU / Vector API 102)
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -100,12 +103,27 @@ jobs:
       - name: Package Flashable BakaSU / KernelSU Module ZIP
         run: |
           chmod +x scripts/package_module.sh
-          ./scripts/package_module.sh PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17.zip
-          unzip -l build/release/PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17.zip
+          ./scripts/package_module.sh PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip
+          unzip -l build/release/PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip
 
-      - name: Upload Flashable Module ZIP Artifact
+      - name: Upload Direct-Flashable Module ZIP Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17
-          path: build/release/PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17.zip
+          name: PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17
+          path: build/module-stage/*
           if-no-files-found: error
+
+      - name: Publish Direct Download Release v2.0.0
+        if: github.event_name == 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view v2.0.0 >/dev/null 2>&1; then
+            gh release upload v2.0.0 build/release/PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip --clobber
+          else
+            gh release create v2.0.0 build/release/PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip \
+              --target "${GITHUB_SHA}" \
+              --title "Privacy Sentinel v2.0.0 — Mobile Edition (POCO X6 5G / BakaSU / A17)" \
+              --notes "Pure Mobile-Native WebUI v2.0 (zero desktop clutter), in-place flash-over upgrade over v1.0, Android 17 / HyperOS 4 / Linux 5.10 / BakaSU + SuSFS + Zygisk Next + Vector API 102."
+          fi

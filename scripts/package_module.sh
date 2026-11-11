@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STAGE_DIR="${ROOT_DIR}/build/module-stage"
 OUT_DIR="${ROOT_DIR}/build/release"
-ZIP_NAME="${1:-PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17.zip}"
+ZIP_NAME="${1:-PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip}"
 
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR/bin" "$STAGE_DIR/zygisk" "$STAGE_DIR/apk" "$OUT_DIR"

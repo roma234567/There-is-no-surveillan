@@ -1,4 +1,4 @@
-# Privacy Sentinel (`v1.0.0-garnet`)
+# Privacy Sentinel (`v2.0.0-garnet` • Mobile Edition)
 
 Комплексный модуль защиты конфиденциальности, межпроцессного фаервола, ядерной песочницы и подмены идентификаторов для **Android 17 (API 37) / HyperOS 4**.  
 Спроектирован и оптимизирован под **POCO X6 5G (`garnet`, `arm64-v8a`, ядро Linux `5.10`)** и стек **BakaSU (KernelSU + встроенный SuSFS) + Zygisk Next + Vector (LibXposed API 102)**.
@@ -59,15 +59,15 @@
 1. Прогоняет интеграционные тесты C++20 демона `sentineld`;
 2. Компилирует `sentineld`, `sentinelctl` и `zygisk/arm64-v8a.so` через **Android NDK r27c**;
 3. Собирает `PrivacySentinelVector.apk` под **LibXposed API 102** (JDK 21 + Gradle);
-4. Упаковывает готовый к прошивке архив `PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17.zip` в раздел **Artifacts**.
+4. Упаковывает готовый к прошивке архив `PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip` в раздел **Releases** и **Artifacts**.
 
 ### 2. Локальная сборка и тесты демона
 ```bash
 make test
 ```
 
-### 3. Установка на POCO X6 5G (`garnet`, BakaSU)
-1. Прошейте `PrivacySentinel-v1.0.0-arm64-garnet-bakaSU-a17.zip` через **BakaSU Manager**.
+### 3. Установка и обновление на POCO X6 5G (`garnet`, BakaSU)
+1. Прошейте `PrivacySentinel-v2.0.0-arm64-garnet-bakaSU-a17.zip` через **BakaSU Manager** (поддерживается обновление прямо поверх v1.x с сохранением настроек и мгновенным обновлением мобильного WebUI).
 2. Перезагрузите устройство.
 3. Откройте менеджер **Vector** и убедитесь, что модуль `Privacy Sentinel (Vector API 102)` активирован для `System Framework (android)` и нужных пользовательских приложений.
 4. Откройте карточку модуля в **BakaSU Manager** (или **KsuWebUI**) для запуска Web UI.
